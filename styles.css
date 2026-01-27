@@ -130,6 +130,16 @@ input[type="checkbox"] {
     cursor: pointer;
 }
 
+/* Checkbox label styles - using class for better browser compatibility */
+.form-group label {
+    display: block;
+}
+
+.form-group label input[type="checkbox"] ~ * {
+    vertical-align: middle;
+}
+
+/* Modern browsers with :has() support */
 label:has(input[type="checkbox"]) {
     display: flex;
     align-items: center;

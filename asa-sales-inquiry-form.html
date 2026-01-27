@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ASA Sales Inquiry Form</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html, body {
+        height: 100vh;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+        background: #f8f8f8;
+      }
+
+      .main-layout {
+        display: flex;
+        height: 100vh;
+        width: 100vw;
+      }
+
+      /* Left panel - 40% width */
+      .form-panel {
+        width: 40%;
+        background: white;
+        padding: 20px;
+        border-right: 2px solid #ddd;
+        overflow-y: auto;
+        overflow-x: hidden;
+      }
+
+      /* Right panel - 60% width */
+      .preview-panel {
+        width: 60%;
+        position: relative;
+        background: #f0f0f0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #ddd;
+      }
+
+      .header img {
+        height: 50px;
+        width: auto;
+      }
+
+      .header h2 {
+        margin: 0;
+        color: #333;
+      }
+
+      /* Form groups - labels next to inputs */
+      .form-group {
+        display: flex;
+        align-items: center;
+        margin-bottom: 12px;
+        gap: 12px;
+      }
+
+      .form-group label {
+        min-width: 140px;
+        font-weight: 500;
+        color: #555;
+        font-size: 14px;
+      }
+
+      .form-group input[type="text"],
+      .form-group input[type="number"] {
+        flex: 1;
+        padding: 8px;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: white;
+      }
+
+      /* Textarea group - keep label on top for textarea */
+      .textarea-group {
+        margin-bottom: 15px;
+      }
+
+      .textarea-group label {
+        display: block;
+        font-weight: 500;
+        color: #555;
+        font-size: 14px;
+        margin-bottom: 5px;
+      }
+
+      .textarea-group textarea {
+        width: 100%;
+        padding: 8px;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: white;
+        min-height: 80px;
+        resize: vertical;
+      }
+
+      /* Checkbox group - horizontal layout */
+      .checkbox-group {
+        margin-bottom: 20px;
+      }
+
+      .checkbox-group > label {
+        font-weight: 500;
+        color: #555;
+        font-size: 14px;
+        margin-bottom: 8px;
+        display: block;
+      }
+
+      .checkbox-container {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+
+      .checkbox-item {
+        display: flex;
+        align-items: center;
+      }
+
+      .checkbox-item input[type="checkbox"] {
+        margin-right: 6px;
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+      }
+
+      .checkbox-item label {
+        margin: 0;
+        cursor: pointer;
+        font-weight: normal;
+        color: #555;
+        font-size: 14px;
+      }
+
+      /* Inline input with dropdown */
+      .inline-input-group {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex: 1;
+      }
+
+      .inline-input-group input {
+        flex: 1;
+      }
+
+      .inline-input-group select {
+        width: 100px;
+        padding: 8px;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: white;
+      }
+
+      /* Conditional sections */
+      .conditional-section {
+        display: none;
+        margin-top: 15px;
+        margin-bottom: 15px;
+        padding: 15px;
+        background: #f9f9f9;
+        border-left: 3px solid #4CAF50;
+        border-radius: 4px;
+      }
+
+      .conditional-section.active {
+        display: block;
+      }
+
+      .conditional-section h3 {
+        font-size: 16px;
+        color: #333;
+        margin-bottom: 15px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #ddd;
+      }
+
+      /* Dropdown selections */
+      select {
+        width: 100%;
+        padding: 8px;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: white;
+      }
+
+      /* Performance group */
+      .performance-group {
+        margin-top: 10px;
+      }
+
+      .performance-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+        align-items: center;
+      }
+
+      .performance-row label {
+        min-width: 140px;
+        font-weight: 500;
+        color: #555;
+        font-size: 14px;
+      }
+
+      .performance-row select {
+        flex: 1;
+      }
+
+      /* Image upload */
+      .file-upload {
+        margin-bottom: 15px;
+      }
+
+      .file-upload label {
+        display: block;
+        font-weight: 500;
+        color: #555;
+        font-size: 14px;
+        margin-bottom: 5px;
+      }
+
+      .file-upload input[type="file"] {
+        width: 100%;
+        padding: 8px;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: white;
+      }
+
+      /* Submit button */
+      .submit-btn {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        color: white;
+        background: #4CAF50;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 20px;
+      }
+
+      .submit-btn:hover {
+        background: #45a049;
+      }
+
+      /* Preview panel content */
+      .preview-content {
+        text-align: center;
+        color: #888;
+      }
+
+      .preview-content h3 {
+        font-size: 24px;
+        margin-bottom: 10px;
+      }
+
+      .preview-images {
+        margin-top: 20px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+      }
+
+      .preview-images img {
+        max-width: 200px;
+        max-height: 200px;
+        border: 2px solid #ddd;
+        border-radius: 4px;
+      }
+
+      /* Scrollbar styling for webkit browsers */
+      .form-panel::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .form-panel::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+      }
+
+      .form-panel::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+      }
+
+      .form-panel::-webkit-scrollbar-thumb:hover {
+        background: #a1a1a1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-layout">
+      <!-- Left Panel - Form -->
+      <div class="form-panel">
+        <div class="header">
+          <img src="Z:\Allgemein\Temp\MA\ASA-2017-clear-q5wbyrbl7shpdhw75ixpkziyjbxg04yk9z9dpdln6s.png" alt="ASA Logo">
+          <h2>Sales Inquiry Form</h2>
+        </div>
+
+        <form id="inquiryForm">
+          <!-- Project/NOP Number -->
+          <div class="form-group">
+            <label for="nopNumber">Project/NOP Number:</label>
+            <input type="text" id="nopNumber" name="nopNumber" required />
+          </div>
+
+          <!-- Sales Representative -->
+          <div class="form-group">
+            <label for="salesRep">Sales Representative:</label>
+            <input type="text" id="salesRep" name="salesRep" required />
+          </div>
+
+          <!-- Customer -->
+          <div class="form-group">
+            <label for="customer">Customer:</label>
+            <input type="text" id="customer" name="customer" required />
+          </div>
+
+          <!-- Cooler Type Checkboxes - Horizontal -->
+          <div class="checkbox-group">
+            <label>Cooler Type:</label>
+            <div class="checkbox-container">
+              <div class="checkbox-item">
+                <input type="checkbox" id="oilCooler" name="coolerType" value="oil" />
+                <label for="oilCooler">Oil cooler</label>
+              </div>
+              <div class="checkbox-item">
+                <input type="checkbox" id="waterCooler" name="coolerType" value="water" />
+                <label for="waterCooler">Water cooler</label>
+              </div>
+              <div class="checkbox-item">
+                <input type="checkbox" id="chargeAirCooler" name="coolerType" value="chargeair" />
+                <label for="chargeAirCooler">ChargeAir cooler</label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ambient Air Temperature with units -->
+          <div class="form-group">
+            <label for="ambientTemp">Ambient Air Temp.:</label>
+            <div class="inline-input-group">
+              <input type="number" id="ambientTemp" name="ambientTemp" step="0.1" />
+              <select id="ambientTempUnit" name="ambientTempUnit">
+                <option value="C">°C</option>
+                <option value="F">°F</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Altitude with units -->
+          <div class="form-group">
+            <label for="altitude">Altitude:</label>
+            <div class="inline-input-group">
+              <input type="number" id="altitude" name="altitude" step="0.1" />
+              <select id="altitudeUnit" name="altitudeUnit">
+                <option value="m">m</option>
+                <option value="ft">ft</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Fan and Count -->
+          <div class="form-group">
+            <label for="fan">Fan:</label>
+            <input type="text" id="fan" name="fan" style="flex: 2; margin-right: 15px;" />
+            <label for="fanCount" style="min-width: 60px;">Count:</label>
+            <input type="number" id="fanCount" name="fanCount" value="1" style="width: 60px;" />
+          </div>
+
+          <!-- Oil Cooler Section (Conditional) -->
+          <div id="oilSection" class="conditional-section">
+            <h3>Oil Cooler Configuration</h3>
+            
+            <div class="form-group">
+              <label for="oilType">Oil type:</label>
+              <input type="text" id="oilType" name="oilType" />
+            </div>
+
+            <div class="form-group">
+              <label for="oilEntryTemp">Oil Entry Temp.:</label>
+              <div class="inline-input-group">
+                <input type="number" id="oilEntryTemp" name="oilEntryTemp" step="0.1" />
+                <select id="oilEntryTempUnit" name="oilEntryTempUnit">
+                  <option value="C">°C</option>
+                  <option value="F">°F</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="oilFlowrate">Flowrate:</label>
+              <div class="inline-input-group">
+                <input type="number" id="oilFlowrate" name="oilFlowrate" step="0.1" />
+                <select id="oilFlowrateUnit" name="oilFlowrateUnit">
+                  <option value="L/min">L/min</option>
+                  <option value="GPM">GPM</option>
+                  <option value="m3/s">m³/s</option>
+                  <option value="kg/s">kg/s</option>
+                  <option value="lb/s">lb/s</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="performance-group">
+              <div class="performance-row">
+                <label for="oilDesiredPerf">Desired Performance:</label>
+                <select id="oilDesiredPerf" name="oilDesiredPerf">
+                  <option value="">Select...</option>
+                  <option value="capacity">Capacity</option>
+                  <option value="specific">Specific perf.</option>
+                  <option value="exit">Exit temp.</option>
+                </select>
+                <input type="number" id="oilPerfValue" name="oilPerfValue" step="0.1" style="margin-left: 10px; flex: 1; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; background: white;" />
+                <select id="oilPerfUnit" name="oilPerfUnit" style="margin-left: 10px; width: 120px;">
+                  <option value="">Select performance first...</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Water Cooler Section (Conditional) -->
+          <div id="waterSection" class="conditional-section">
+            <h3>Water Cooler Configuration</h3>
+            
+            <div class="form-group">
+              <label for="medium">Medium:</label>
+              <input type="text" id="medium" name="medium" value="50/50 WaterGlycol" />
+            </div>
+
+            <div class="form-group">
+              <label for="waterEntryTemp">Medium Entry Temp.:</label>
+              <div class="inline-input-group">
+                <input type="number" id="waterEntryTemp" name="waterEntryTemp" step="0.1" />
+                <select id="waterEntryTempUnit" name="waterEntryTempUnit">
+                  <option value="C">°C</option>
+                  <option value="F">°F</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="waterFlowrate">Flowrate:</label>
+              <div class="inline-input-group">
+                <input type="number" id="waterFlowrate" name="waterFlowrate" step="0.1" />
+                <select id="waterFlowrateUnit" name="waterFlowrateUnit">
+                  <option value="L/min">L/min</option>
+                  <option value="GPM">GPM</option>
+                  <option value="m3/s">m³/s</option>
+                  <option value="kg/s">kg/s</option>
+                  <option value="lb/s">lb/s</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="performance-group">
+              <div class="performance-row">
+                <label for="waterDesiredPerf">Desired Performance:</label>
+                <select id="waterDesiredPerf" name="waterDesiredPerf">
+                  <option value="">Select...</option>
+                  <option value="capacity">Capacity</option>
+                  <option value="specific">Specific perf.</option>
+                  <option value="exit">Exit temp.</option>
+                </select>
+                <input type="number" id="waterPerfValue" name="waterPerfValue" step="0.1" style="margin-left: 10px; flex: 1; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; background: white;" />
+                <select id="waterPerfUnit" name="waterPerfUnit" style="margin-left: 10px; width: 120px;">
+                  <option value="">Select performance first...</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- ChargeAir Cooler Section (Conditional) -->
+          <div id="chargeAirSection" class="conditional-section">
+            <h3>ChargeAir Cooler Configuration</h3>
+            
+            <div class="form-group">
+              <label for="chargeAirType">ChargeAir type:</label>
+              <input type="text" id="chargeAirType" name="chargeAirType" />
+            </div>
+
+            <div class="form-group">
+              <label for="chargeAirEntryTemp">ChargeAir Entry Temp.:</label>
+              <div class="inline-input-group">
+                <input type="number" id="chargeAirEntryTemp" name="chargeAirEntryTemp" step="0.1" />
+                <select id="chargeAirEntryTempUnit" name="chargeAirEntryTempUnit">
+                  <option value="C">°C</option>
+                  <option value="F">°F</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="chargeAirFlowrate">Flowrate:</label>
+              <div class="inline-input-group">
+                <input type="number" id="chargeAirFlowrate" name="chargeAirFlowrate" step="0.1" />
+                <select id="chargeAirFlowrateUnit" name="chargeAirFlowrateUnit">
+                  <option value="L/min">L/min</option>
+                  <option value="GPM">GPM</option>
+                  <option value="m3/s">m³/s</option>
+                  <option value="kg/s">kg/s</option>
+                  <option value="lb/s">lb/s</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="chargeAirPressure">Pressure:</label>
+              <div class="inline-input-group">
+                <input type="number" id="chargeAirPressure" name="chargeAirPressure" step="0.1" />
+                <select id="chargeAirPressureUnit" name="chargeAirPressureUnit">
+                  <option value="bar">bar</option>
+                  <option value="Pa">Pa</option>
+                  <option value="kPa">kPa</option>
+                  <option value="MPa">MPa</option>
+                  <option value="mmHg">mmHg</option>
+                  <option value="PSI">PSI</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="performance-group">
+              <div class="performance-row">
+                <label for="chargeAirDesiredPerf">Desired Performance:</label>
+                <select id="chargeAirDesiredPerf" name="chargeAirDesiredPerf">
+                  <option value="">Select...</option>
+                  <option value="capacity">Capacity</option>
+                  <option value="specific">Specific perf.</option>
+                  <option value="exit">Exit temp.</option>
+                </select>
+                <input type="number" id="chargeAirPerfValue" name="chargeAirPerfValue" step="0.1" style="margin-left: 10px; flex: 1; padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; background: white;" />
+                <select id="chargeAirPerfUnit" name="chargeAirPerfUnit" style="margin-left: 10px; width: 120px;">
+                  <option value="">Select performance first...</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Image Upload -->
+          <div class="file-upload">
+            <label for="images">Upload Images:</label>
+            <input type="file" id="images" name="images" accept="image/*" multiple />
+          </div>
+
+          <!-- Remarks -->
+          <div class="textarea-group">
+            <label for="remarks">Remarks/Extra Requirements:</label>
+            <textarea id="remarks" name="remarks" rows="4"></textarea>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" class="submit-btn">Submit Inquiry</button>
+        </form>
+      </div>
+
+      <!-- Right Panel - Preview -->
+      <div class="preview-panel">
+        <div class="preview-content">
+          <h3>Preview</h3>
+          <p>Form preview will appear here</p>
+          <div class="preview-images" id="imagePreview"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Handle Oil Cooler checkbox
+      document.getElementById('oilCooler').addEventListener('change', function() {
+        const oilSection = document.getElementById('oilSection');
+        if (this.checked) {
+          oilSection.classList.add('active');
+        } else {
+          oilSection.classList.remove('active');
+        }
+      });
+
+      // Handle Water Cooler checkbox
+      document.getElementById('waterCooler').addEventListener('change', function() {
+        const waterSection = document.getElementById('waterSection');
+        if (this.checked) {
+          waterSection.classList.add('active');
+        } else {
+          waterSection.classList.remove('active');
+        }
+      });
+
+      // Handle ChargeAir Cooler checkbox
+      document.getElementById('chargeAirCooler').addEventListener('change', function() {
+        const chargeAirSection = document.getElementById('chargeAirSection');
+        if (this.checked) {
+          chargeAirSection.classList.add('active');
+        } else {
+          chargeAirSection.classList.remove('active');
+        }
+      });
+
+      // Handle Oil Desired Performance dropdown
+      document.getElementById('oilDesiredPerf').addEventListener('change', function() {
+        const perfUnit = document.getElementById('oilPerfUnit');
+        perfUnit.innerHTML = '';
+        
+        if (this.value === 'capacity') {
+          perfUnit.innerHTML = `
+            <option value="kW">kW</option>
+            <option value="BTU/min">BTU/min</option>
+            <option value="HP">HP</option>
+          `;
+        } else if (this.value === 'specific') {
+          perfUnit.innerHTML = `
+            <option value="kW/°C">kW/°C</option>
+            <option value="BTU/min.F">BTU/min.F</option>
+          `;
+        } else if (this.value === 'exit') {
+          perfUnit.innerHTML = `
+            <option value="°C">°C</option>
+            <option value="°F">°F</option>
+          `;
+        } else {
+          perfUnit.innerHTML = '<option value="">Select performance first...</option>';
+        }
+      });
+
+      // Handle Water Desired Performance dropdown
+      document.getElementById('waterDesiredPerf').addEventListener('change', function() {
+        const perfUnit = document.getElementById('waterPerfUnit');
+        perfUnit.innerHTML = '';
+        
+        if (this.value === 'capacity') {
+          perfUnit.innerHTML = `
+            <option value="kW">kW</option>
+            <option value="BTU/min">BTU/min</option>
+            <option value="HP">HP</option>
+          `;
+        } else if (this.value === 'specific') {
+          perfUnit.innerHTML = `
+            <option value="kW/°C">kW/°C</option>
+            <option value="BTU/min.F">BTU/min.F</option>
+          `;
+        } else if (this.value === 'exit') {
+          perfUnit.innerHTML = `
+            <option value="°C">°C</option>
+            <option value="°F">°F</option>
+          `;
+        } else {
+          perfUnit.innerHTML = '<option value="">Select performance first...</option>';
+        }
+      });
+
+      // Handle ChargeAir Desired Performance dropdown
+      document.getElementById('chargeAirDesiredPerf').addEventListener('change', function() {
+        const perfUnit = document.getElementById('chargeAirPerfUnit');
+        perfUnit.innerHTML = '';
+        
+        if (this.value === 'capacity') {
+          perfUnit.innerHTML = `
+            <option value="kW">kW</option>
+            <option value="BTU/min">BTU/min</option>
+            <option value="HP">HP</option>
+          `;
+        } else if (this.value === 'specific') {
+          perfUnit.innerHTML = `
+            <option value="kW/°C">kW/°C</option>
+            <option value="BTU/min.F">BTU/min.F</option>
+          `;
+        } else if (this.value === 'exit') {
+          perfUnit.innerHTML = `
+            <option value="°C">°C</option>
+            <option value="°F">°F</option>
+          `;
+        } else {
+          perfUnit.innerHTML = '<option value="">Select performance first...</option>';
+        }
+      });
+
+      // Handle image preview
+      document.getElementById('images').addEventListener('change', function(e) {
+        const previewContainer = document.getElementById('imagePreview');
+        previewContainer.innerHTML = '';
+        
+        const files = e.target.files;
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+              const img = document.createElement('img');
+              img.src = e.target.result;
+              previewContainer.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+          }
+        }
+      });
+
+      // Handle form submission
+      document.getElementById('inquiryForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Collect form data
+        const formData = new FormData(this);
+        
+        // Get selected cooler types
+        const coolerTypes = [];
+        if (document.getElementById('oilCooler').checked) coolerTypes.push('Oil');
+        if (document.getElementById('waterCooler').checked) coolerTypes.push('Water');
+        if (document.getElementById('chargeAirCooler').checked) coolerTypes.push('ChargeAir');
+        
+        // Display confirmation
+        alert('Form submitted!\n\nProject/NOP: ' + formData.get('nopNumber') + 
+              '\nSales Rep: ' + formData.get('salesRep') + 
+              '\nCustomer: ' + formData.get('customer') +
+              '\nCooler Types: ' + coolerTypes.join(', '));
+        
+        // Here you would typically send the data to a server
+        // For example: fetch('/submit-inquiry', { method: 'POST', body: formData });
+      });
+    </script>
+  </body>
+</html>

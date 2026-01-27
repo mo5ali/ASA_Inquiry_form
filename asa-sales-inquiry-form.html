@@ -395,6 +395,17 @@
             <input type="number" id="fanCount" name="fanCount" value="1" style="width: 60px;" />
           </div>
 
+          <!-- Fan Noise Level -->
+          <div class="form-group">
+            <label for="maxSoundLevel">Fan Noise:</label>
+            <input type="number" id="maxSoundLevel" name="maxSoundLevel" style="flex: 1; margin-right: 10px;" step="0.1" />
+            <select id="soundUnit" name="soundUnit" style="min-width: 80px;">
+              <option value="dB(A)">dB(A)</option>
+              <option value="dB">dB</option>
+              <option value="sone">sone</option>
+            </select>
+          </div>
+
           <!-- Oil Cooler Section (Conditional) -->
           <div id="oilSection" class="conditional-section">
             <h3>Oil Cooler Configuration</h3>
@@ -575,22 +586,58 @@
             <textarea id="remarks" name="remarks" rows="4"></textarea>
           </div>
 
-          <!-- Submit Button -->
-          <button type="submit" class="submit-btn">Submit Inquiry</button>
+          <!-- Generate Button -->
+          <button type="submit" class="submit-btn">Generate PDF</button>
         </form>
       </div>
 
       <!-- Right Panel - Preview -->
       <div class="preview-panel">
         <div class="preview-content">
-          <h3>Preview</h3>
-          <p>Form preview will appear here</p>
+          <h3>Cooler Configuration</h3>
+          
+          <!-- Instructions label in top right -->
+          <div id="instructionLabel" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.95); padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 12px; color: #555; max-width: 250px; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000; display: none;">
+            Please enter the minimum design envelope constraints (width, height, depth)<br>
+            Please specify units
+          </div>
+          
+          <div id="coolerImageContainer" style="margin: 5px 0; text-align: center; position: relative; display: inline-block;">
+            <img id="coolerImage" src="" alt="Select cooler types to see configuration" style="width: 120%; height: auto; display: none; border: 2px solid #ddd; border-radius: 8px;" />
+            
+            <!-- Overlay text boxes for dimensions -->
+            <div id="dimensionOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none;">
+              <!-- Common dimension boxes -->
+              <input type="text" id="coolerWidthBox" class="dimension-input" placeholder="Width" style="position: absolute; width: 80px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); pointer-events: auto;" />
+              <input type="text" id="coreHeightBox" class="dimension-input" placeholder="Core H" style="position: absolute; width: 80px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); pointer-events: auto;" />
+              <input type="text" id="coolerHeightBox" class="dimension-input" placeholder="Height" style="position: absolute; width: 80px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); pointer-events: auto;" />
+              <input type="text" id="depthBox" class="dimension-input" placeholder="Depth" style="position: absolute; width: 80px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); pointer-events: auto;" />
+              
+              <!-- Core width boxes (variable number) -->
+              <input type="text" id="coreWidth1Box" class="dimension-input core-width" placeholder="Core W1" style="position: absolute; width: 80px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); pointer-events: auto; display: none;" />
+              <input type="text" id="coreWidth2Box" class="dimension-input core-width" placeholder="Core W2" style="position: absolute; width: 80px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); pointer-events: auto; display: none;" />
+              <input type="text" id="coreWidth3Box" class="dimension-input core-width" placeholder="Core W3" style="position: absolute; width: 80px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); pointer-events: auto; display: none;" />
+            </div>
+            
+            <p id="coolerImagePlaceholder" style="color: #888; font-style: italic;">Select cooler types to see configuration diagram</p>
+          </div>
           <div class="preview-images" id="imagePreview"></div>
         </div>
       </div>
     </div>
 
+    <!-- jsPDF Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
     <script>
+      // Wait for docx to load
+      function waitForDocx(callback) {
+        if (window.docx) {
+          callback();
+        } else {
+          setTimeout(() => waitForDocx(callback), 100);
+        }
+      }
       // Handle Oil Cooler checkbox
       document.getElementById('oilCooler').addEventListener('change', function() {
         const oilSection = document.getElementById('oilSection');
@@ -599,6 +646,7 @@
         } else {
           oilSection.classList.remove('active');
         }
+        updateCoolerImage();
       });
 
       // Handle Water Cooler checkbox
@@ -609,6 +657,7 @@
         } else {
           waterSection.classList.remove('active');
         }
+        updateCoolerImage();
       });
 
       // Handle ChargeAir Cooler checkbox
@@ -619,7 +668,122 @@
         } else {
           chargeAirSection.classList.remove('active');
         }
+        updateCoolerImage();
       });
+
+      // Function to update cooler configuration image
+      function updateCoolerImage() {
+        const oilChecked = document.getElementById('oilCooler').checked;
+        const waterChecked = document.getElementById('waterCooler').checked;
+        const chargeAirChecked = document.getElementById('chargeAirCooler').checked;
+        
+        const coolerImage = document.getElementById('coolerImage');
+        const placeholder = document.getElementById('coolerImagePlaceholder');
+        const overlay = document.getElementById('dimensionOverlay');
+        const instructionLabel = document.getElementById('instructionLabel');
+        
+        let imagePath = '';
+        let coreCount = 0;
+        
+        // Check if any cooler is selected
+        const anyCoolerSelected = oilChecked || waterChecked || chargeAirChecked;
+        
+        // Show/hide instruction label based on selection
+        if (anyCoolerSelected) {
+          instructionLabel.style.display = 'block';
+        } else {
+          instructionLabel.style.display = 'none';
+        }
+        
+        // Determine which image to show based on selected combinations
+        if (waterChecked && oilChecked && chargeAirChecked) {
+          imagePath = 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\RAD_OC_CAC.png';
+          coreCount = 3;
+        } else if (waterChecked && oilChecked) {
+          imagePath = 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\RAD_OC.png';
+          coreCount = 2;
+        } else if (waterChecked && chargeAirChecked) {
+          imagePath = 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\RAD_CAC.png';
+          coreCount = 2;
+        } else if (oilChecked && chargeAirChecked) {
+          imagePath = 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\OC_CAC.png';
+          coreCount = 2;
+        } else if (waterChecked) {
+          imagePath = 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\RAD.png';
+          coreCount = 1;
+        } else if (oilChecked) {
+          imagePath = 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\OC.png';
+          coreCount = 1;
+        } else if (chargeAirChecked) {
+          imagePath = 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\CAC.png';
+          coreCount = 1;
+        }
+        
+        if (imagePath) {
+          coolerImage.src = imagePath;
+          coolerImage.style.display = 'block';
+          placeholder.style.display = 'none';
+          overlay.style.display = 'block';
+          
+          // Position dimension boxes based on configuration
+          positionDimensionBoxes(coreCount, waterChecked, oilChecked, chargeAirChecked);
+        } else {
+          coolerImage.style.display = 'none';
+          placeholder.style.display = 'block';
+          overlay.style.display = 'none';
+        }
+      }
+      
+      // Function to position dimension boxes
+      function positionDimensionBoxes(coreCount, water, oil, chargeAir) {
+        // Hide all core width boxes first
+        document.querySelectorAll('.core-width').forEach(box => box.style.display = 'none');
+        
+        // Common positions (approximate % from top-left of image)
+        document.getElementById('coolerWidthBox').style.left = '20%';
+        document.getElementById('coolerWidthBox').style.top = '82%';
+        
+        document.getElementById('coolerHeightBox').style.left = '100%';
+        document.getElementById('coolerHeightBox').style.top = '60%';
+        
+        document.getElementById('coreHeightBox').style.left = '75%';
+        document.getElementById('coreHeightBox').style.top = '60%';
+        
+        document.getElementById('depthBox').style.left = '80%';
+        document.getElementById('depthBox').style.top = '20%';
+        
+        // Show and position core width boxes based on configuration
+        if (coreCount >= 1) {
+          const core1 = document.getElementById('coreWidth1Box');
+          core1.style.display = 'block';
+          
+          if (coreCount === 1) {
+            core1.style.left = '40%';
+            core1.style.top = '10%';
+          } else if (coreCount === 2) {
+            core1.style.left = '20%';
+            core1.style.top = '10%';
+            
+            const core2 = document.getElementById('coreWidth2Box');
+            core2.style.display = 'block';
+            core2.style.left = '50%';
+            core2.style.top = '15%';
+          } else if (coreCount === 3) {
+            core1.style.left = '15%';
+            core1.style.top = '10%';
+            
+            const core2 = document.getElementById('coreWidth2Box');
+            core2.style.display = 'block';
+            core2.style.left = '35%';
+            core2.style.top = '20%';
+            
+            const core3 = document.getElementById('coreWidth3Box');
+            core3.style.display = 'block';
+            core3.style.left = '55%';
+            core3.style.top = '30%';
+          }
+        }
+      }
 
       // Handle Oil Desired Performance dropdown
       document.getElementById('oilDesiredPerf').addEventListener('change', function() {
@@ -699,10 +863,26 @@
         }
       });
 
+      // Store uploaded images for PDF
+      let uploadedImages = [];
+      
+      // Simple image paths (no preloading to avoid fetch issues)
+      const imageUrls = {
+        'logo': 'Z:\\Allgemein\\Temp\\MA\\ASA-2017-clear-q5wbyrbl7shpdhw75ixpkziyjbxg04yk9z9dpdln6s.png',
+        'CAC': 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\CAC.png',
+        'OC': 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\OC.png',
+        'OC_CAC': 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\OC_CAC.png',
+        'RAD': 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\RAD.png',
+        'RAD_CAC': 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\RAD_CAC.png',
+        'RAD_OC': 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\RAD_OC.png',
+        'RAD_OC_CAC': 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\RAD_OC_CAC.png'
+      };
+      
       // Handle image preview
       document.getElementById('images').addEventListener('change', function(e) {
         const previewContainer = document.getElementById('imagePreview');
         previewContainer.innerHTML = '';
+        uploadedImages = []; // Reset uploaded images array
         
         const files = e.target.files;
         for (let i = 0; i < files.length; i++) {
@@ -713,34 +893,316 @@
               const img = document.createElement('img');
               img.src = e.target.result;
               previewContainer.appendChild(img);
+              
+              // Store image data for PDF
+              uploadedImages.push({
+                name: file.name,
+                data: e.target.result
+              });
             };
             reader.readAsDataURL(file);
           }
         }
       });
 
-      // Handle form submission
+      // Check if jsPDF is available
+      function waitForJsPDF(callback) {
+        if (typeof window.jspdf !== 'undefined') {
+          console.log('jsPDF is ready!');
+          callback();
+        } else {
+          console.log('Waiting for jsPDF to load...');
+          setTimeout(() => waitForJsPDF(callback), 100);
+        }
+      }
+
+      // Handle form submission - Generate PDF
       document.getElementById('inquiryForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        console.log('Form submission started...');
+        
+        // Wait for jsPDF to be available
+        waitForJsPDF(() => {
+          try {
+            generatePDF();
+          } catch (error) {
+            console.error('PDF Generation Error:', error);
+            alert('Error generating PDF: ' + error.message);
+          }
+        });
+      });
+      
+      function generateWordDocument() {
+        // Access docx properly
+        const Document = docx.Document;
+        const Packer = docx.Packer;
+        const Paragraph = docx.Paragraph;
+        const TextRun = docx.TextRun;
+        const ImageRun = docx.ImageRun;
+        const HeadingLevel = docx.HeadingLevel;
         
         // Collect form data
-        const formData = new FormData(this);
+        const formData = new FormData(document.getElementById('inquiryForm'));
         
         // Get selected cooler types
         const coolerTypes = [];
-        if (document.getElementById('oilCooler').checked) coolerTypes.push('Oil');
-        if (document.getElementById('waterCooler').checked) coolerTypes.push('Water');
-        if (document.getElementById('chargeAirCooler').checked) coolerTypes.push('ChargeAir');
+        if (document.getElementById('oilCooler').checked) coolerTypes.push('Oil Cooler');
+        if (document.getElementById('waterCooler').checked) coolerTypes.push('Water Cooler');
+        if (document.getElementById('chargeAirCooler').checked) coolerTypes.push('ChargeAir Cooler');
         
-        // Display confirmation
-        alert('Form submitted!\n\nProject/NOP: ' + formData.get('nopNumber') + 
-              '\nSales Rep: ' + formData.get('salesRep') + 
-              '\nCustomer: ' + formData.get('customer') +
-              '\nCooler Types: ' + coolerTypes.join(', '));
+        const children = [];
         
-        // Here you would typically send the data to a server
-        // For example: fetch('/submit-inquiry', { method: 'POST', body: formData });
-      });
+        // Title with ASA text (no logo for now to avoid fetch issues)
+        children.push(
+          new Paragraph({
+            children: [new TextRun("ASA - Sales Inquiry Form")],
+            heading: HeadingLevel.TITLE,
+            alignment: "center"
+          })
+        );
+        
+        // Project Information
+        children.push(
+          new Paragraph({
+            text: "Project Information",
+            heading: HeadingLevel.HEADING_1
+          })
+        );
+        
+        const projectInfo = [
+          'Project/NOP: ' + (formData.get('nopNumber') || 'Not specified'),
+          'Sales Rep: ' + (formData.get('salesRep') || 'Not specified'),
+          'Customer: ' + (formData.get('customer') || 'Not specified'),
+          'Cooler Types: ' + (coolerTypes.length ? coolerTypes.join(', ') : 'None selected'),
+          'Ambient Temp: ' + (formData.get('ambientTemp') || 'Not specified') + ' ' + (formData.get('ambientTempUnit') || ''),
+          'Altitude: ' + (formData.get('altitude') || 'Not specified') + ' ' + (formData.get('altitudeUnit') || ''),
+          'Fan: ' + (formData.get('fan') || 'Not specified'),
+          'Fan Count: ' + (formData.get('fanCount') || 'Not specified')
+        ];
+        
+        projectInfo.forEach(line => {
+          children.push(
+            new Paragraph({
+              children: [new TextRun(line)]
+            })
+          );
+        });
+        
+        // Design Constraints
+        children.push(
+          new Paragraph({
+            text: "Design Envelope Constraints",
+            heading: HeadingLevel.HEADING_1
+          })
+        );
+        
+        const dimensions = [
+          'Cooler Width: ' + (document.getElementById('coolerWidthBox').value || 'Not specified'),
+          'Cooler Height: ' + (document.getElementById('coolerHeightBox').value || 'Not specified'),
+          'Core Height: ' + (document.getElementById('coreHeightBox').value || 'Not specified'),
+          'Depth: ' + (document.getElementById('depthBox').value || 'Not specified')
+        ];
+        
+        // Add core widths if they have values
+        const core1 = document.getElementById('coreWidth1Box').value;
+        const core2 = document.getElementById('coreWidth2Box').value;
+        const core3 = document.getElementById('coreWidth3Box').value;
+        
+        if (core1) dimensions.push('Core Width 1: ' + core1);
+        if (core2) dimensions.push('Core Width 2: ' + core2);
+        if (core3) dimensions.push('Core Width 3: ' + core3);
+        
+        dimensions.forEach(line => {
+          children.push(
+            new Paragraph({
+              children: [new TextRun(line)]
+            })
+          );
+        });
+        
+        // Add cooler configuration info (text only for now)
+        const configType = getConfigurationName(coolerTypes).replace(' configuration', '');
+        
+        if (coolerTypes.length > 0) {
+          children.push(
+            new Paragraph({
+              children: [new TextRun("Cooler Configuration")],
+              heading: HeadingLevel.HEADING_1
+            })
+          );
+          
+          children.push(
+            new Paragraph({
+              children: [new TextRun('Configuration: ' + getConfigurationName(coolerTypes))]
+            })
+          );
+          
+          children.push(
+            new Paragraph({
+              children: [new TextRun('Configuration diagram: ' + configType + ' (see attached files)')]
+            })
+          );
+        }
+        
+        // Add cooler configurations
+        if (document.getElementById('oilCooler').checked) {
+          addCoolerConfigToWord(children, 'Oil Cooler Configuration', {
+            'Oil Type': formData.get('oilType'),
+            'Entry Temp': (formData.get('oilEntryTemp') || '') + ' ' + (formData.get('oilEntryTempUnit') || ''),
+            'Flowrate': (formData.get('oilFlowrate') || '') + ' ' + (formData.get('oilFlowrateUnit') || ''),
+            'Performance': formData.get('oilDesiredPerf'),
+            'Performance Value': (formData.get('oilPerfValue') || '') + ' ' + (formData.get('oilPerfUnit') || '')
+          }, Paragraph, TextRun, HeadingLevel);
+        }
+        
+        if (document.getElementById('waterCooler').checked) {
+          addCoolerConfigToWord(children, 'Water Cooler Configuration', {
+            'Medium': formData.get('medium'),
+            'Entry Temp': (formData.get('waterEntryTemp') || '') + ' ' + (formData.get('waterEntryTempUnit') || ''),
+            'Flowrate': (formData.get('waterFlowrate') || '') + ' ' + (formData.get('waterFlowrateUnit') || ''),
+            'Performance': formData.get('waterDesiredPerf'),
+            'Performance Value': (formData.get('waterPerfValue') || '') + ' ' + (formData.get('waterPerfUnit') || '')
+          }, Paragraph, TextRun, HeadingLevel);
+        }
+        
+        if (document.getElementById('chargeAirCooler').checked) {
+          addCoolerConfigToWord(children, 'ChargeAir Cooler Configuration', {
+            'ChargeAir Type': formData.get('chargeAirType'),
+            'Entry Temp': (formData.get('chargeAirEntryTemp') || '') + ' ' + (formData.get('chargeAirEntryTempUnit') || ''),
+            'Flowrate': (formData.get('chargeAirFlowrate') || '') + ' ' + (formData.get('chargeAirFlowrateUnit') || ''),
+            'Pressure': (formData.get('chargeAirPressure') || '') + ' ' + (formData.get('chargeAirPressureUnit') || ''),
+            'Performance': formData.get('chargeAirDesiredPerf'),
+            'Performance Value': (formData.get('chargeAirPerfValue') || '') + ' ' + (formData.get('chargeAirPerfUnit') || '')
+          }, Paragraph, TextRun, HeadingLevel);
+        }
+        
+        // Remarks
+        const remarks = formData.get('remarks');
+        if (remarks && remarks.trim()) {
+          children.push(
+            new Paragraph({
+              text: "Remarks",
+              heading: HeadingLevel.HEADING_1
+            })
+          );
+          
+          children.push(
+            new Paragraph({
+              children: [new TextRun(remarks)]
+            })
+          );
+        }
+        
+        // Add uploaded images
+        if (uploadedImages.length > 0) {
+          children.push(
+            new Paragraph({
+              children: [new TextRun("Uploaded Images")],
+              heading: HeadingLevel.HEADING_1
+            })
+          );
+          
+          uploadedImages.forEach((imageData, index) => {
+            try {
+              const imageBlob = base64ToBlob(imageData.data);
+              children.push(
+                new Paragraph({
+                  children: [new TextRun(`Image ${index + 1}: ${imageData.name}`)]
+                })
+              );
+              
+              children.push(
+                new Paragraph({
+                  children: [
+                    new ImageRun({
+                      data: imageBlob,
+                      transformation: {
+                        width: 400,
+                        height: 300,
+                      },
+                    }),
+                  ],
+                })
+              );
+            } catch (error) {
+              console.error('Error adding uploaded image to Word doc:', error);
+              children.push(
+                new Paragraph({
+                  children: [new TextRun(`Error: Could not add image ${imageData.name}`)]
+                })
+              );
+            }
+          });
+        }
+        
+        // Create document
+        const doc = new Document({
+          sections: [{
+            properties: {},
+            children: children
+          }]
+        });
+        
+        // Save document
+        Packer.toBlob(doc).then(blob => {
+          const projectNumber = formData.get('nopNumber') || 'Unknown';
+          const filename = `ASA_Inquiry_${projectNumber.replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
+          
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          a.click();
+          
+          window.URL.revokeObjectURL(url);
+          alert('Word document generated successfully!');
+        }).catch(error => {
+          console.error('Error saving Word document:', error);
+          alert('Error saving Word document: ' + error.message);
+        });
+      }
+      
+      // Helper function to convert base64 to blob
+      function base64ToBlob(base64, mimeType = 'image/png') {
+        const byteCharacters = atob(base64.split(',')[1]);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        return new Blob([byteArray], { type: mimeType });
+      }
+      
+      // Helper function to add cooler config to Word document
+      function addCoolerConfigToWord(children, title, config, Paragraph, TextRun, HeadingLevel) {
+        children.push(
+          new Paragraph({
+            children: [new TextRun(title)],
+            heading: HeadingLevel.HEADING_2
+          })
+        );
+        
+        Object.entries(config).forEach(([key, value]) => {
+          if (value && value.trim() && value !== ' ') {
+            children.push(
+              new Paragraph({
+                children: [new TextRun(`${key}: ${value}`)]
+              })
+            );
+          }
+        });
+      }
+      
+      function getConfigurationName(coolerTypes) {
+        if (coolerTypes.length === 3) return 'RAD_OC_CAC configuration';
+        if (coolerTypes.includes('Water Cooler') && coolerTypes.includes('Oil Cooler')) return 'RAD_OC configuration';
+        if (coolerTypes.includes('Water Cooler') && coolerTypes.includes('ChargeAir Cooler')) return 'RAD_CAC configuration';
+        if (coolerTypes.includes('Oil Cooler') && coolerTypes.includes('ChargeAir Cooler')) return 'OC_CAC configuration';
+        if (coolerTypes.includes('Water Cooler')) return 'RAD configuration';
+        if (coolerTypes.includes('Oil Cooler')) return 'OC configuration';
+        if (coolerTypes.includes('ChargeAir Cooler')) return 'CAC configuration';
+        return 'No configuration selected';
+      }
     </script>
   </body>
 </html>

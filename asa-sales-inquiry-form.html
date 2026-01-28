@@ -586,8 +586,17 @@
             <textarea id="remarks" name="remarks" rows="4"></textarea>
           </div>
 
-          <!-- Generate Button -->
-          <button type="submit" class="submit-btn">Generate PDF</button>
+          <!-- Template info (read-only) -->
+          <div class="form-group">
+            <label>Template: RAD_OC_CAC (auto-selected)</label>
+          </div>
+
+          <!-- Generate Buttons -->
+          <div style="text-align: center; margin-top: 20px;">
+            <button type="submit" class="submit-btn" style="margin-right: 10px;">Generate PDF with Template</button>
+            <button type="button" onclick="generatePDFWithHTML2PDF()" style="background: #ff6b35; color: white; padding: 12px 24px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; margin-right: 10px;">Generate Standard PDF</button>
+            <button type="button" onclick="sendEmail()" style="background: #0078d4; color: white; padding: 12px 24px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">Send via Outlook</button>
+          </div>
         </form>
       </div>
 
@@ -626,8 +635,10 @@
       </div>
     </div>
 
-    <!-- jsPDF Library -->
+    <!-- PDF Libraries -->
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <script>
       // Wait for docx to load
@@ -905,32 +916,565 @@
         }
       });
 
-      // Check if jsPDF is available
-      function waitForJsPDF(callback) {
-        if (typeof window.jspdf !== 'undefined') {
-          console.log('jsPDF is ready!');
+      // Check if libraries are available
+      function waitForLibraries(callback) {
+        if (typeof window.html2pdf !== 'undefined' && typeof PDFLib !== 'undefined') {
+          console.log('html2pdf and PDF-lib are ready!');
           callback();
         } else {
-          console.log('Waiting for jsPDF to load...');
-          setTimeout(() => waitForJsPDF(callback), 100);
+          console.log('Waiting for libraries to load...');
+          setTimeout(() => waitForLibraries(callback), 100);
         }
       }
 
-      // Handle form submission - Generate PDF
+      // Handle form submission - Generate PDF by overlaying text on template
       document.getElementById('inquiryForm').addEventListener('submit', function(e) {
         e.preventDefault();
         console.log('Form submission started...');
         
-        // Wait for jsPDF to be available
-        waitForJsPDF(() => {
+        // Wait for libraries to be available
+        waitForLibraries(() => {
           try {
-            generatePDF();
+            generatePDFWithTemplate();
           } catch (error) {
             console.error('PDF Generation Error:', error);
             alert('Error generating PDF: ' + error.message);
           }
         });
       });
+
+      async function generatePDFWithTemplate() {
+        try {
+          console.log('Starting PDF generation with template overlay...');
+          
+          // Get form data
+          const formData = new FormData(document.getElementById('inquiryForm'));
+          const coolerTypes = [];
+          if (document.getElementById('oilCooler').checked) coolerTypes.push('Oil');
+          if (document.getElementById('waterCooler').checked) coolerTypes.push('Water'); 
+          if (document.getElementById('chargeAirCooler').checked) coolerTypes.push('ChargeAir');
+          
+          // Determine template based on checkboxes
+          let templateName = '';
+          let templateUrl = '';
+          
+          if (coolerTypes.includes('Water') && coolerTypes.includes('Oil') && coolerTypes.includes('ChargeAir')) {
+            templateName = 'RAD_OC_CAC';
+            templateUrl = 'https://github.com/YOUR_USERNAME/YOUR_REPO/raw/main/RAD_OC_CAC.pdf';
+          } else {
+            // For now, only RAD_OC_CAC template exists
+            templateName = 'RAD_OC_CAC';
+            templateUrl = 'https://github.com/YOUR_USERNAME/YOUR_REPO/raw/main/RAD_OC_CAC.pdf';
+            console.log('Note: Using RAD_OC_CAC template as it\'s the only one available');
+          }
+          
+          console.log(`Using template: ${templateName} from ${templateUrl}`);
+          
+          let pdfDoc;
+          
+          try {
+            // Load template from GitHub
+            console.log('Loading template from GitHub...');
+            const response = await fetch(templateUrl);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch template: ${response.status} ${response.statusText}`);
+            }
+            const templateBytes = await response.arrayBuffer();
+            pdfDoc = await PDFLib.PDFDocument.load(templateBytes);
+            console.log('✓ PDF template loaded successfully from GitHub!');
+          } catch (error) {
+            console.log('Could not load template from GitHub:', error.message);
+            alert('Could not load template from GitHub: ' + error.message + '\n\nPlease upload RAD_OC_CAC.pdf to GitHub and update the URL in the code.');
+            return;
+          }
+          
+          // Get the first page for text overlay
+          const pages = pdfDoc.getPages();
+          const firstPage = pages[0];
+          const { width, height } = firstPage.getSize();
+          
+          // Define fonts
+          const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+          const boldFont = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+          
+          // Apply text overlays - simple positioning for the RAD_OC_CAC template
+          const textOverlays = [];
+          
+          // Basic project information
+          if (formData.get('nopNumber')) {
+            textOverlays.push({ 
+              text: formData.get('nopNumber'), 
+              x: 150, y: height - 150, size: 12, font: font 
+            });
+          }
+          
+          if (formData.get('salesRep')) {
+            textOverlays.push({ 
+              text: formData.get('salesRep'), 
+              x: 150, y: height - 180, size: 12, font: font 
+            });
+          }
+          
+          if (formData.get('customer')) {
+            textOverlays.push({ 
+              text: formData.get('customer'), 
+              x: 150, y: height - 210, size: 12, font: font 
+            });
+          }
+          
+          // Environmental conditions
+          if (formData.get('ambientTemp')) {
+            const tempText = formData.get('ambientTemp') + ' ' + (formData.get('ambientTempUnit') || '°C');
+            textOverlays.push({ 
+              text: tempText, 
+              x: 150, y: height - 250, size: 12, font: font 
+            });
+          }
+          
+          if (formData.get('altitude')) {
+            const altText = formData.get('altitude') + ' ' + (formData.get('altitudeUnit') || 'm');
+            textOverlays.push({ 
+              text: altText, 
+              x: 350, y: height - 250, size: 12, font: font 
+            });
+          }
+          
+          // Fan information
+          if (formData.get('fan')) {
+            textOverlays.push({ 
+              text: formData.get('fan'), 
+              x: 150, y: height - 280, size: 12, font: font 
+            });
+          }
+          
+          if (formData.get('fanCount')) {
+            textOverlays.push({ 
+              text: formData.get('fanCount'), 
+              x: 300, y: height - 280, size: 12, font: font 
+            });
+          }
+          
+          if (formData.get('maxSoundLevel')) {
+            const noiseText = formData.get('maxSoundLevel') + ' ' + (formData.get('soundUnit') || 'dB(A)');
+            textOverlays.push({ 
+              text: noiseText, 
+              x: 450, y: height - 280, size: 12, font: font 
+            });
+          }
+          
+          // Dimension overlays from the dimension boxes
+          const dimensions = [
+            { id: 'coolerWidthBox', x: 100, y: height - 450 },
+            { id: 'coolerHeightBox', x: 500, y: height - 350 },
+            { id: 'coreHeightBox', x: 450, y: height - 380 },
+            { id: 'depthBox', x: 480, y: height - 200 },
+            { id: 'coreWidth1Box', x: 180, y: height - 520 },
+            { id: 'coreWidth2Box', x: 280, y: height - 500 },
+            { id: 'coreWidth3Box', x: 380, y: height - 480 },
+          ];
+          
+          dimensions.forEach(dim => {
+            const value = document.getElementById(dim.id).value;
+            if (value && value.trim()) {
+              textOverlays.push({ 
+                text: value, 
+                x: dim.x, y: dim.y, size: 10, font: font 
+              });
+            }
+          });
+          
+          // Cooler specifications
+          let specY = height - 550;
+          
+          if (coolerTypes.includes('Oil')) {
+            textOverlays.push({ 
+              text: 'Oil Cooler:', 
+              x: 50, 
+              y: specY, 
+              size: 12, 
+              font: boldFont,
+              color: PDFLib.rgb(0.2, 0.2, 0.8)
+            });
+            specY -= 20;
+            
+            const oilSpecs = [
+              { label: 'Type', field: 'oilType' },
+              { label: 'Entry Temp', field: 'oilEntryTemp', unit: 'oilEntryTempUnit' },
+              { label: 'Flowrate', field: 'oilFlowrate', unit: 'oilFlowrateUnit' },
+              { label: 'Performance', field: 'oilDesiredPerf' },
+              { label: 'Value', field: 'oilPerfValue', unit: 'oilPerfUnit' },
+            ];
+            
+            oilSpecs.forEach(spec => {
+              const value = formData.get(spec.field);
+              if (value && value.trim()) {
+                const unit = spec.unit ? formData.get(spec.unit) : '';
+                const text = `${spec.label}: ${value}${unit ? ' ' + unit : ''}`;
+                textOverlays.push({ 
+                  text: text, 
+                  x: 70, 
+                  y: specY, 
+                  size: 10, 
+                  font: font 
+                });
+                specY -= 15;
+              }
+            });
+            specY -= 10;
+          }
+          
+          if (coolerTypes.includes('Water')) {
+            textOverlays.push({ 
+              text: 'Water Cooler:', 
+              x: 50, 
+              y: specY, 
+              size: 12, 
+              font: boldFont,
+              color: PDFLib.rgb(0.2, 0.2, 0.8)
+            });
+            specY -= 20;
+            
+            const waterSpecs = [
+              { label: 'Medium', field: 'medium' },
+              { label: 'Entry Temp', field: 'waterEntryTemp', unit: 'waterEntryTempUnit' },
+              { label: 'Flowrate', field: 'waterFlowrate', unit: 'waterFlowrateUnit' },
+              { label: 'Performance', field: 'waterDesiredPerf' },
+              { label: 'Value', field: 'waterPerfValue', unit: 'waterPerfUnit' },
+            ];
+            
+            waterSpecs.forEach(spec => {
+              const value = formData.get(spec.field);
+              if (value && value.trim()) {
+                const unit = spec.unit ? formData.get(spec.unit) : '';
+                const text = `${spec.label}: ${value}${unit ? ' ' + unit : ''}`;
+                textOverlays.push({ 
+                  text: text, 
+                  x: 70, 
+                  y: specY, 
+                  size: 10, 
+                  font: font 
+                });
+                specY -= 15;
+              }
+            });
+            specY -= 10;
+          }
+          
+          if (coolerTypes.includes('ChargeAir')) {
+            textOverlays.push({ 
+              text: 'Charge Air Cooler:', 
+              x: 50, 
+              y: specY, 
+              size: 12, 
+              font: boldFont,
+              color: PDFLib.rgb(0.2, 0.2, 0.8)
+            });
+            specY -= 20;
+            
+            const chargeAirSpecs = [
+              { label: 'Type', field: 'chargeAirType' },
+              { label: 'Entry Temp', field: 'chargeAirEntryTemp', unit: 'chargeAirEntryTempUnit' },
+              { label: 'Flowrate', field: 'chargeAirFlowrate', unit: 'chargeAirFlowrateUnit' },
+              { label: 'Pressure', field: 'chargeAirPressure', unit: 'chargeAirPressureUnit' },
+              { label: 'Performance', field: 'chargeAirDesiredPerf' },
+              { label: 'Value', field: 'chargeAirPerfValue', unit: 'chargeAirPerfUnit' },
+            ];
+            
+            chargeAirSpecs.forEach(spec => {
+              const value = formData.get(spec.field);
+              if (value && value.trim()) {
+                const unit = spec.unit ? formData.get(spec.unit) : '';
+                const text = `${spec.label}: ${value}${unit ? ' ' + unit : ''}`;
+                textOverlays.push({ 
+                  text: text, 
+                  x: 70, 
+                  y: specY, 
+                  size: 10, 
+                  font: font 
+                });
+                specY -= 15;
+              }
+            });
+            specY -= 10;
+          }
+          
+          // Add remarks if they exist
+          const remarks = formData.get('remarks');
+          if (remarks && remarks.trim()) {
+            textOverlays.push({ 
+              text: 'Remarks:', 
+              x: 50, 
+              y: specY, 
+              size: 12, 
+              font: boldFont,
+              color: PDFLib.rgb(0.2, 0.2, 0.8)
+            });
+            specY -= 20;
+            
+            const remarkLines = remarks.split('\n');
+            remarkLines.forEach((line, index) => {
+              if (line.trim()) {
+                textOverlays.push({ 
+                  text: line.trim(), 
+                  x: 70, 
+                  y: specY - (index * 15), 
+                  size: 10, 
+                  font: font 
+                });
+              }
+            });
+          }
+          
+          // Apply all text overlays to the PDF
+          textOverlays.forEach(overlay => {
+            if (overlay.text && overlay.text.trim()) {
+              firstPage.drawText(overlay.text, {
+                x: overlay.x,
+                y: overlay.y,
+                size: overlay.size,
+                font: overlay.font,
+                color: overlay.color || PDFLib.rgb(0, 0, 0), // Default to black text
+              });
+            }
+          });
+          
+          // Save the PDF
+          const pdfBytes = await pdfDoc.save();
+          const filename = `ASA_Inquiry_${templateName}_${(formData.get('nopNumber') || 'Draft').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+          
+          // Create download link
+          const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          a.click();
+          
+          window.URL.revokeObjectURL(url);
+          
+          console.log('✓ PDF generated successfully with template overlay!');
+          alert(`✓ PDF generated successfully using ${templateName} template!`);
+          
+        } catch (error) {
+          console.error('Template PDF generation error:', error);
+          alert('Error generating PDF with template: ' + error.message + '\n\nFalling back to standard PDF generation...');
+          
+          // Fallback to the original method
+          generatePDFWithHTML2PDF();
+        }
+      }
+
+      function generatePDFWithHTML2PDF() {
+        console.log('Starting html2pdf generation...');
+        
+        // Get form data properly
+        const formData = new FormData(document.getElementById('inquiryForm'));
+        const coolerTypes = [];
+        if (document.getElementById('oilCooler').checked) coolerTypes.push('Oil');
+        if (document.getElementById('waterCooler').checked) coolerTypes.push('Water');
+        if (document.getElementById('chargeAirCooler').checked) coolerTypes.push('ChargeAir');
+        
+        // Get actual logo source from page
+        const logoImg = document.querySelector('img[alt*="ASA"]');
+        const logoSrc = logoImg ? logoImg.src : '';
+        console.log('Logo source:', logoSrc);
+        
+        // Get actual cooler config image source from page
+        const coolerImg = document.getElementById('coolerImage');
+        const coolerSrc = coolerImg && coolerImg.src && !coolerImg.src.includes('placeholder') ? coolerImg.src : '';
+        console.log('Cooler image source:', coolerSrc);
+        
+        // Get user uploaded images
+        const uploadedImages = document.querySelectorAll('.uploaded-image img');
+        console.log('Found uploaded images:', uploadedImages.length);
+        
+        // Create HTML content for PDF
+        const pdfContent = document.createElement('div');
+        pdfContent.style.padding = '20px';
+        pdfContent.style.fontFamily = 'Arial, sans-serif';
+        pdfContent.style.fontSize = '12px';
+        pdfContent.style.lineHeight = '1.4';
+        pdfContent.style.color = '#000';
+        pdfContent.style.backgroundColor = '#fff';
+        
+        pdfContent.innerHTML = `
+          <div style="text-align: center; margin-bottom: 30px;">
+            ${logoSrc ? `<img src="${logoSrc}" alt="ASA Logo" style="height: 40px; margin-bottom: 10px;">` : '<div style="font-weight: bold; font-size: 18px; margin-bottom: 10px;">ASA</div>'}
+            <h1 style="margin: 10px 0; font-size: 24px;">Sales Inquiry Form</h1>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Project Information</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr><td style="padding: 5px;"><strong>Project/NOP:</strong></td><td style="padding: 5px;">${formData.get('nopNumber') || 'N/A'}</td></tr>
+              <tr><td style="padding: 5px;"><strong>Sales Rep:</strong></td><td style="padding: 5px;">${formData.get('salesRep') || 'N/A'}</td></tr>
+              <tr><td style="padding: 5px;"><strong>Customer:</strong></td><td style="padding: 5px;">${formData.get('customer') || 'N/A'}</td></tr>
+              <tr><td style="padding: 5px;"><strong>Project Type:</strong></td><td style="padding: 5px;">${formData.get('projectType') || 'N/A'}</td></tr>
+              <tr><td style="padding: 5px;"><strong>Ambient Temperature:</strong></td><td style="padding: 5px;">${formData.get('ambientTemp') || 'N/A'}°C</td></tr>
+              <tr><td style="padding: 5px;"><strong>Altitude:</strong></td><td style="padding: 5px;">${formData.get('altitude') || 'N/A'}m</td></tr>
+              <tr><td style="padding: 5px;"><strong>Fan Noise:</strong></td><td style="padding: 5px;">${formData.get('maxSoundLevel') || 'N/A'} ${formData.get('soundUnit') || 'dB(A)'}</td></tr>
+              <tr><td style="padding: 5px;"><strong>Fan:</strong></td><td style="padding: 5px;">${formData.get('fan') || 'N/A'}</td></tr>
+              <tr><td style="padding: 5px;"><strong>Fan Count:</strong></td><td style="padding: 5px;">${formData.get('fanCount') || '1'}</td></tr>
+            </table>
+          </div>
+          
+          ${coolerTypes.length > 0 ? `
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Cooler Configuration: ${coolerTypes.join(' + ')}</h3>
+            ${coolerSrc ? `
+              <div style="text-align: center; margin: 20px 0;">
+                <img src="${coolerSrc}" alt="Cooler Configuration" style="max-width: 100%; height: auto;">
+              </div>
+            ` : `
+              <div style="text-align: center; padding: 40px; border: 2px dashed #ccc; margin: 20px 0; color: #666;">
+                Cooler Configuration: ${coolerTypes.join(' + ')}
+              </div>
+            `}
+            <table style="width: 100%; border-collapse: collapse;">
+              ${coolerTypes.includes('Oil') ? `<tr><td style="padding: 5px;"><strong>Oil Flow Rate:</strong></td><td style="padding: 5px;">${formData.get('oilFlowRate') || 'N/A'} l/min</td></tr>` : ''}
+              ${coolerTypes.includes('Water') ? `<tr><td style="padding: 5px;"><strong>Water Flow Rate:</strong></td><td style="padding: 5px;">${formData.get('waterFlowRate') || 'N/A'} l/min</td></tr>` : ''}
+              ${coolerTypes.includes('ChargeAir') ? `<tr><td style="padding: 5px;"><strong>Charge Air Fans:</strong></td><td style="padding: 5px;">${formData.get('chargeAirFans') || 'N/A'}</td></tr>` : ''}
+              ${coolerTypes.includes('ChargeAir') ? `<tr><td style="padding: 5px;"><strong>Charge Air Count:</strong></td><td style="padding: 5px;">${formData.get('chargeAirCount') || 'N/A'}</td></tr>` : ''}
+            </table>
+          </div>
+          ` : ''}
+          
+          ${uploadedImages.length > 0 ? `
+          <div style="margin-bottom: 20px; page-break-before: avoid;">
+            <h3 style="color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Uploaded Images (${uploadedImages.length})</h3>
+            ${Array.from(uploadedImages).map((img, index) => `
+              <div style="margin: 15px 0; text-align: center; page-break-inside: avoid;">
+                <img src="${img.src}" alt="Uploaded Image ${index + 1}" style="max-width: 90%; max-height: 250px; border: 1px solid #ddd;">
+                <p style="margin-top: 5px; font-size: 10px; color: #666;">Image ${index + 1}</p>
+              </div>
+            `).join('')}
+          </div>
+          ` : ''}
+          
+          ${formData.get('remarks') ? `
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #333; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Remarks</h3>
+            <div style="white-space: pre-wrap; padding: 10px; background: #f9f9f9; border: 1px solid #eee;">${formData.get('remarks')}</div>
+          </div>
+          ` : ''}
+        `;
+        
+        // Log what we're trying to generate
+        console.log('PDF Content created with:');
+        console.log('- Logo:', logoSrc ? 'YES' : 'NO');
+        console.log('- Cooler image:', coolerSrc ? 'YES' : 'NO'); 
+        console.log('- User images:', uploadedImages.length);
+        console.log('- Cooler types:', coolerTypes);
+        console.log('- Form data keys:', Array.from(formData.keys()));
+        
+        // Configure html2pdf options with CORS workaround
+        const opt = {
+          margin: 10,
+          filename: 'ASA_Inquiry_' + (formData.get('nopNumber') || 'Draft').replace(/[^a-zA-Z0-9]/g, '_') + '.pdf',
+          image: { type: 'jpeg', quality: 0.9 },
+          html2canvas: { 
+            scale: 1.5,
+            useCORS: false,
+            allowTaint: false,
+            logging: true,
+            backgroundColor: '#ffffff',
+            onclone: function(clonedDoc) {
+              // Only remove problematic local file images, keep user uploaded images
+              const images = clonedDoc.querySelectorAll('img');
+              images.forEach(img => {
+                const src = img.src || '';
+                // Only replace local file path images (not base64, blob, or data URLs)
+                if (src.startsWith('file://') || src.match(/^[A-Z]:\\/)) {
+                  console.log('Removing problematic local file image:', src);
+                  const placeholder = clonedDoc.createElement('div');
+                  placeholder.style.cssText = 'width: 200px; height: 100px; border: 2px dashed #666; display: flex; align-items: center; justify-content: center; margin: 10px auto; color: #666; font-size: 12px; background: #f9f9f9;';
+                  placeholder.textContent = img.alt || 'Local Image';
+                  img.parentNode.replaceChild(placeholder, img);
+                } else if (src.startsWith('data:') || src.startsWith('blob:')) {
+                  console.log('Keeping user uploaded image:', src.substring(0, 50) + '...');
+                  // Keep user uploaded images as they should work fine
+                }
+              });
+            }
+          },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        
+        // Generate PDF
+        html2pdf().set(opt).from(pdfContent).save()
+          .then(() => {
+            console.log('✓ PDF generated successfully with html2pdf!');
+            alert('✓ PDF generated successfully!');
+          })
+          .catch(error => {
+            console.error('html2pdf error:', error);
+            alert('Error generating PDF: ' + error.message);
+          });
+      }
+      
+      function sendEmail() {
+        console.log('Launching Outlook email...');
+        
+        // Get form data
+        const formData = new FormData(document.getElementById('inquiryForm'));
+        const coolerTypes = [];
+        if (document.getElementById('oilCooler').checked) coolerTypes.push('Oil');
+        if (document.getElementById('waterCooler').checked) coolerTypes.push('Water');
+        if (document.getElementById('chargeAirCooler').checked) coolerTypes.push('ChargeAir');
+        
+        const uploadedImages = document.querySelectorAll('.uploaded-image img');
+        
+        // Email details
+        const subject = encodeURIComponent(`ASA Sales Inquiry - ${formData.get('nopNumber') || 'New Project'}`);
+        
+        const body = encodeURIComponent(`
+ASA SALES INQUIRY FORM
+======================
+
+PROJECT INFORMATION:
+- Project/NOP: ${formData.get('nopNumber') || 'N/A'}
+- Sales Rep: ${formData.get('salesRep') || 'N/A'}
+- Customer: ${formData.get('customer') || 'N/A'}
+- Project Type: ${formData.get('projectType') || 'N/A'}
+- Ambient Temperature: ${formData.get('ambientTemp') || 'N/A'}°C
+- Altitude: ${formData.get('altitude') || 'N/A'}m
+- Fan Noise: ${formData.get('maxSoundLevel') || 'N/A'} ${formData.get('soundUnit') || 'dB(A)'}
+- Fan: ${formData.get('fan') || 'N/A'}
+- Fan Count: ${formData.get('fanCount') || '1'}
+
+COOLER CONFIGURATION:
+- Selected Coolers: ${coolerTypes.length > 0 ? coolerTypes.join(' + ') : 'None selected'}
+${coolerTypes.includes('Oil') ? `- Oil Flow Rate: ${formData.get('oilFlowRate') || 'N/A'} l/min` : ''}
+${coolerTypes.includes('Water') ? `- Water Flow Rate: ${formData.get('waterFlowRate') || 'N/A'} l/min` : ''}
+${coolerTypes.includes('ChargeAir') ? `- Charge Air Fans: ${formData.get('chargeAirFans') || 'N/A'}, Count: ${formData.get('chargeAirCount') || 'N/A'}` : ''}
+
+${formData.get('remarks') ? `REMARKS:
+${formData.get('remarks')}` : ''}
+
+IMAGES:
+${uploadedImages.length > 0 ? `- ${uploadedImages.length} image(s) uploaded (please find attached)` : '- No images uploaded'}
+
+Note: Please manually attach any uploaded images and cooler configuration diagrams as needed.
+        `.trim());
+        
+        // Launch Outlook
+        const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
+        
+        try {
+          window.location.href = mailtoLink;
+          alert(`✓ Outlook launched successfully!\n\nNext steps:\n1. Add recipient email address\n2. Manually attach uploaded images if any\n3. Attach cooler configuration diagrams\n4. Send email`);
+        } catch (error) {
+          console.error('Failed to launch Outlook:', error);
+          
+          // Fallback - copy to clipboard
+          const fullText = decodeURIComponent(body);
+          navigator.clipboard.writeText(fullText).then(() => {
+            alert('✓ Email content copied to clipboard!\n\nNext steps:\n1. Open Outlook manually\n2. Paste this content\n3. Add recipient and attachments');
+          }).catch(() => {
+            alert('Email details:\n\nSubject: ' + decodeURIComponent(subject) + '\n\n' + decodeURIComponent(body).substring(0, 500) + '...');
+          });
+        }
+      }
       
       function generateWordDocument() {
         // Access docx properly

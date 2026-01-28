@@ -321,7 +321,7 @@
       <!-- Left Panel - Form -->
       <div class="form-panel">
         <div class="header">
-          <img src="Z:\Allgemein\Temp\MA\ASA-2017-clear-q5wbyrbl7shpdhw75ixpkziyjbxg04yk9z9dpdln6s.png" alt="ASA Logo">
+          <img src="Z:\Allgemein\Temp\MA\ASA_Inquiry_form\ASA-2017-clear.png" alt="ASA Logo">
           <h2>Sales Inquiry Form</h2>
         </div>
 
@@ -587,15 +587,9 @@
           </div>
 
           <!-- Template info (read-only) -->
-          <div class="form-group">
-            <label>Template: RAD_OC_CAC (auto-selected)</label>
-          </div>
-
           <!-- Generate Buttons -->
           <div style="text-align: center; margin-top: 20px;">
-            <button type="submit" class="submit-btn" style="margin-right: 10px;">Generate PDF with Template</button>
-            <button type="button" onclick="generatePDFWithHTML2PDF()" style="background: #ff6b35; color: white; padding: 12px 24px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; margin-right: 10px;">Generate Standard PDF</button>
-            <button type="button" onclick="sendEmail()" style="background: #0078d4; color: white; padding: 12px 24px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer;">Send via Outlook</button>
+            <button type="submit" class="submit-btn" style="margin-right: 10px;">Generate Inquiry</button>
           </div>
         </form>
       </div>
@@ -879,7 +873,7 @@
       
       // Simple image paths (no preloading to avoid fetch issues)
       const imageUrls = {
-        'logo': 'Z:\\Allgemein\\Temp\\MA\\ASA-2017-clear-q5wbyrbl7shpdhw75ixpkziyjbxg04yk9z9dpdln6s.png',
+        'logo': 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\ASA-2017-clear.png',
         'CAC': 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\CAC.png',
         'OC': 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\OC.png',
         'OC_CAC': 'Z:\\Allgemein\\Temp\\MA\\ASA_Inquiry_form\\OC_CAC.png',
@@ -908,7 +902,8 @@
               // Store image data for PDF
               uploadedImages.push({
                 name: file.name,
-                data: e.target.result
+                data: e.target.result.split(',')[1], // Remove data:image/png;base64, prefix
+                type: file.type
               });
             };
             reader.readAsDataURL(file);
@@ -954,89 +949,244 @@
           if (document.getElementById('waterCooler').checked) coolerTypes.push('Water'); 
           if (document.getElementById('chargeAirCooler').checked) coolerTypes.push('ChargeAir');
           
-          // Determine template based on checkboxes
+          // Determine template based on checkboxes  
           let templateName = '';
-          let templateUrl = '';
           
           if (coolerTypes.includes('Water') && coolerTypes.includes('Oil') && coolerTypes.includes('ChargeAir')) {
             templateName = 'RAD_OC_CAC';
-            templateUrl = 'https://github.com/YOUR_USERNAME/YOUR_REPO/raw/main/RAD_OC_CAC.pdf';
+          } else if (coolerTypes.includes('Water') && coolerTypes.includes('Oil')) {
+            templateName = 'RAD_OC';
+          } else if (coolerTypes.includes('Water') && coolerTypes.includes('ChargeAir')) {
+            templateName = 'RAD_CAC';
+          } else if (coolerTypes.includes('Oil') && coolerTypes.includes('ChargeAir')) {
+            templateName = 'OC_CAC';
+          } else if (coolerTypes.includes('Water')) {
+            templateName = 'RAD';
+          } else if (coolerTypes.includes('Oil')) {
+            templateName = 'OC';
+          } else if (coolerTypes.includes('ChargeAir')) {
+            templateName = 'CAC';
           } else {
-            // For now, only RAD_OC_CAC template exists
-            templateName = 'RAD_OC_CAC';
-            templateUrl = 'https://github.com/YOUR_USERNAME/YOUR_REPO/raw/main/RAD_OC_CAC.pdf';
-            console.log('Note: Using RAD_OC_CAC template as it\'s the only one available');
+            templateName = 'RAD_OC_CAC'; // Default
           }
           
-          console.log(`Using template: ${templateName} from ${templateUrl}`);
+          console.log(`Using template: ${templateName} from GitHub`);
           
           let pdfDoc;
           
+          // Create PDF from scratch and load images from GitHub
+          console.log('Creating PDF from scratch with GitHub images...');
+          pdfDoc = await PDFLib.PDFDocument.create();
+          const page = pdfDoc.addPage([595.28, 841.89]); // A4 size
+          
+          // Define fonts
+          const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+          const boldFont = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+          const { width, height } = page.getSize();
+          
           try {
-            // Load template from GitHub
-            console.log('Loading template from GitHub...');
-            const response = await fetch(templateUrl);
-            if (!response.ok) {
-              throw new Error(`Failed to fetch template: ${response.status} ${response.statusText}`);
+            // Load ASA logo from GitHub
+            const logoUrl = 'https://raw.githubusercontent.com/mo5ali/ASA_Inquiry_form/main/ASA-2017-clear.png';
+            console.log('Loading ASA logo from:', logoUrl);
+            const logoResponse = await fetch(logoUrl);
+            console.log('Logo response status:', logoResponse.status, logoResponse.statusText);
+            
+            if (logoResponse.ok) {
+              const logoBytes = await logoResponse.arrayBuffer();
+              console.log('Logo bytes received:', logoBytes.byteLength);
+              const logoImage = await pdfDoc.embedPng(logoBytes);
+              
+              // Add logo at top with proper aspect ratio
+              const logoScale = Math.min(120 / logoImage.width, 50 / logoImage.height);
+              const logoWidth = logoImage.width * logoScale;
+              const logoHeight = logoImage.height * logoScale;
+              
+              page.drawImage(logoImage, {
+                x: 50,
+                y: height - 80,
+                width: logoWidth,
+                height: logoHeight,
+              });
+              console.log('✓ ASA logo loaded successfully!');
+            } else {
+              console.log('Could not load logo, status:', logoResponse.status);
             }
-            const templateBytes = await response.arrayBuffer();
-            pdfDoc = await PDFLib.PDFDocument.load(templateBytes);
-            console.log('✓ PDF template loaded successfully from GitHub!');
           } catch (error) {
-            console.log('Could not load template from GitHub:', error.message);
-            alert('Could not load template from GitHub: ' + error.message + '\n\nPlease upload RAD_OC_CAC.pdf to GitHub and update the URL in the code.');
-            return;
+            console.log('Error loading logo:', error.message);
+            console.log('Full error:', error);
+          }
+          
+          // Add header
+          page.drawText('ASA SALES INQUIRY FORM', {
+            x: 160,
+            y: height - 60,
+            size: 20,
+            font: boldFont,
+            color: PDFLib.rgb(0, 0, 0.8),
+          });
+          
+          try {
+            // Load configuration image from GitHub based on selected coolers
+            let configImageUrl = '';
+            if (coolerTypes.includes('Water') && coolerTypes.includes('Oil') && coolerTypes.includes('ChargeAir')) {
+              configImageUrl = 'https://raw.githubusercontent.com/mo5ali/ASA_Inquiry_form/main/RAD_OC_CAC.png';
+            } else if (coolerTypes.includes('Water') && coolerTypes.includes('Oil')) {
+              configImageUrl = 'https://raw.githubusercontent.com/mo5ali/ASA_Inquiry_form/main/RAD_OC.png';
+            } else if (coolerTypes.includes('Water') && coolerTypes.includes('ChargeAir')) {
+              configImageUrl = 'https://raw.githubusercontent.com/mo5ali/ASA_Inquiry_form/main/RAD_CAC.png';
+            } else if (coolerTypes.includes('Oil') && coolerTypes.includes('ChargeAir')) {
+              configImageUrl = 'https://raw.githubusercontent.com/mo5ali/ASA_Inquiry_form/main/OC_CAC.png';
+            } else if (coolerTypes.includes('Water')) {
+              configImageUrl = 'https://raw.githubusercontent.com/mo5ali/ASA_Inquiry_form/main/RAD.png';
+            } else if (coolerTypes.includes('Oil')) {
+              configImageUrl = 'https://raw.githubusercontent.com/mo5ali/ASA_Inquiry_form/main/OC.png';
+            } else if (coolerTypes.includes('ChargeAir')) {
+              configImageUrl = 'https://raw.githubusercontent.com/mo5ali/ASA_Inquiry_form/main/CAC.png';
+            }
+            
+            if (configImageUrl) {
+              console.log(`Loading config image from: ${configImageUrl}`);
+              const configResponse = await fetch(configImageUrl);
+              console.log('Config image response status:', configResponse.status, configResponse.statusText);
+              
+              if (configResponse.ok) {
+                const configBytes = await configResponse.arrayBuffer();
+                console.log('Config image bytes received:', configBytes.byteLength);
+                const configImage = await pdfDoc.embedPng(configBytes);
+                
+                // Add configuration image with proper aspect ratio
+                const configScale = Math.min(250 / configImage.width, 200 / configImage.height);
+                const configWidth = configImage.width * configScale;
+                const configHeight = configImage.height * configScale;
+                
+                page.drawImage(configImage, {
+                  x: 300 + (250 - configWidth) / 2, // Center horizontally in the allocated space
+                  y: height - 350,
+                  width: configWidth,
+                  height: configHeight,
+                });
+                
+                console.log('✓ Configuration image loaded successfully!');
+              } else {
+                console.log('Could not load config image, status:', configResponse.status);
+                // Draw placeholder rectangle
+                page.drawRectangle({
+                  x: 300,
+                  y: height - 350,
+                  width: 250,
+                  height: 200,
+                  borderColor: PDFLib.rgb(0.8, 0.8, 0.8),
+                  borderWidth: 2,
+                  color: PDFLib.rgb(0.95, 0.95, 0.95),
+                });
+                
+                page.drawText(`${templateName} Configuration`, {
+                  x: 350,
+                  y: height - 250,
+                  size: 12,
+                  font: boldFont,
+                  color: PDFLib.rgb(0.6, 0.6, 0.6),
+                });
+              }
+            }
+          } catch (error) {
+            console.log('Error loading config image:', error.message);
           }
           
           // Get the first page for text overlay
           const pages = pdfDoc.getPages();
           const firstPage = pages[0];
-          const { width, height } = firstPage.getSize();
-          
-          // Define fonts
-          const font = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-          const boldFont = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
           
           // Apply text overlays - simple positioning for the RAD_OC_CAC template
           const textOverlays = [];
           
           // Basic project information
+          let infoY = height - 150;
+          
+          textOverlays.push({ 
+            text: 'Project Information:', 
+            x: 50, 
+            y: infoY, 
+            size: 12, 
+            font: boldFont,
+            color: PDFLib.rgb(0.2, 0.2, 0.8)
+          });
+          infoY -= 25;
+          
           if (formData.get('nopNumber')) {
             textOverlays.push({ 
-              text: formData.get('nopNumber'), 
-              x: 150, y: height - 150, size: 12, font: font 
+              text: 'NOP Number:', 
+              x: 50, y: infoY, size: 10, font: boldFont 
             });
+            textOverlays.push({ 
+              text: formData.get('nopNumber'), 
+              x: 150, y: infoY, size: 10, font: font 
+            });
+            infoY -= 20;
           }
           
           if (formData.get('salesRep')) {
             textOverlays.push({ 
-              text: formData.get('salesRep'), 
-              x: 150, y: height - 180, size: 12, font: font 
+              text: 'Sales Rep:', 
+              x: 50, y: infoY, size: 10, font: boldFont 
             });
+            textOverlays.push({ 
+              text: formData.get('salesRep'), 
+              x: 150, y: infoY, size: 10, font: font 
+            });
+            infoY -= 20;
           }
           
           if (formData.get('customer')) {
             textOverlays.push({ 
-              text: formData.get('customer'), 
-              x: 150, y: height - 210, size: 12, font: font 
+              text: 'Customer:', 
+              x: 50, y: infoY, size: 10, font: boldFont 
             });
+            textOverlays.push({ 
+              text: formData.get('customer'), 
+              x: 150, y: infoY, size: 10, font: font 
+            });
+            infoY -= 20;
           }
           
           // Environmental conditions
+          if (formData.get('ambientTemp') || formData.get('altitude')) {
+            infoY -= 10;
+            textOverlays.push({ 
+              text: 'Environmental Conditions:', 
+              x: 50, 
+              y: infoY, 
+              size: 12, 
+              font: boldFont,
+              color: PDFLib.rgb(0.2, 0.2, 0.8)
+            });
+            infoY -= 25;
+          }
+          
           if (formData.get('ambientTemp')) {
             const tempText = formData.get('ambientTemp') + ' ' + (formData.get('ambientTempUnit') || '°C');
             textOverlays.push({ 
-              text: tempText, 
-              x: 150, y: height - 250, size: 12, font: font 
+              text: 'Ambient Temp:', 
+              x: 50, y: infoY, size: 10, font: boldFont 
             });
+            textOverlays.push({ 
+              text: tempText, 
+              x: 150, y: infoY, size: 10, font: font 
+            });
+            infoY -= 20;
           }
           
           if (formData.get('altitude')) {
             const altText = formData.get('altitude') + ' ' + (formData.get('altitudeUnit') || 'm');
             textOverlays.push({ 
-              text: altText, 
-              x: 350, y: height - 250, size: 12, font: font 
+              text: 'Altitude:', 
+              x: 50, y: infoY, size: 10, font: boldFont 
             });
+            textOverlays.push({ 
+              text: altText, 
+              x: 150, y: infoY, size: 10, font: font 
+            });
+            infoY -= 20;
           }
           
           // Fan information
@@ -1228,7 +1378,7 @@
           // Apply all text overlays to the PDF
           textOverlays.forEach(overlay => {
             if (overlay.text && overlay.text.trim()) {
-              firstPage.drawText(overlay.text, {
+              page.drawText(overlay.text, {
                 x: overlay.x,
                 y: overlay.y,
                 size: overlay.size,
@@ -1237,6 +1387,79 @@
               });
             }
           });
+
+          // Add uploaded images as separate pages
+          console.log('uploadedImages array:', uploadedImages);
+          if (uploadedImages && uploadedImages.length > 0) {
+            console.log(`Adding ${uploadedImages.length} uploaded images as separate pages...`);
+            
+            for (let i = 0; i < uploadedImages.length; i++) {
+              const imageData = uploadedImages[i];
+              console.log(`Processing image ${i + 1}:`, imageData.name, imageData.type);
+              
+              try {
+                // Add new page for each image
+                const imagePage = pdfDoc.addPage([595.28, 841.89]); // A4 size
+                const { width: pageWidth, height: pageHeight } = imagePage.getSize();
+                
+                // Convert base64 to array buffer
+                const imageBytes = Uint8Array.from(atob(imageData.data), c => c.charCodeAt(0));
+                console.log(`Image bytes length: ${imageBytes.length}`);
+                
+                // Determine image type and embed accordingly
+                let embedImage;
+                if (imageData.type.includes('png')) {
+                  embedImage = await pdfDoc.embedPng(imageBytes);
+                } else if (imageData.type.includes('jpg') || imageData.type.includes('jpeg')) {
+                  embedImage = await pdfDoc.embedJpg(imageBytes);
+                } else {
+                  console.log(`Unsupported image type: ${imageData.type}, skipping image ${i + 1}`);
+                  continue;
+                }
+                
+                console.log(`Embedded image dimensions: ${embedImage.width}x${embedImage.height}`);
+                
+                // Calculate scaling to fit image on page with margins
+                const margin = 50;
+                const maxWidth = pageWidth - (margin * 2);
+                const maxHeight = pageHeight - (margin * 3); // Extra margin for title
+                
+                const scale = Math.min(maxWidth / embedImage.width, maxHeight / embedImage.height);
+                const imageWidth = embedImage.width * scale;
+                const imageHeight = embedImage.height * scale;
+                
+                // Center the image
+                const imageX = (pageWidth - imageWidth) / 2;
+                const imageY = (pageHeight - imageHeight) / 2;
+                
+                console.log(`Image placement: ${imageX}, ${imageY}, ${imageWidth}x${imageHeight}`);
+                
+                // Add title
+                imagePage.drawText(`Uploaded Image ${i + 1}: ${imageData.name}`, {
+                  x: margin,
+                  y: pageHeight - margin,
+                  size: 14,
+                  font: boldFont,
+                  color: PDFLib.rgb(0, 0, 0),
+                });
+                
+                // Draw the image
+                imagePage.drawImage(embedImage, {
+                  x: imageX,
+                  y: imageY,
+                  width: imageWidth,
+                  height: imageHeight,
+                });
+                
+                console.log(`✓ Added uploaded image ${i + 1}: ${imageData.name}`);
+                
+              } catch (error) {
+                console.error(`Error adding uploaded image ${i + 1}:`, error);
+              }
+            }
+          } else {
+            console.log('No uploaded images to add to PDF');
+          }
           
           // Save the PDF
           const pdfBytes = await pdfDoc.save();

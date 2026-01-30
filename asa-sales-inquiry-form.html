@@ -34,11 +34,19 @@
         overflow-x: hidden;
       }
 
-      /* Right panel - 60% width */
+      /* Right panel - 60% width - now contains config area and upload preview */
       .preview-panel {
         width: 60%;
         position: relative;
         background: #f0f0f0;
+        display: flex;
+        flex-direction: row;
+        align-items: stretch;
+        padding: 0;
+      }
+      
+      .config-area {
+        flex: 1;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -288,6 +296,30 @@
         gap: 10px;
         justify-content: center;
       }
+      
+      .preview-column {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      
+      .preview-column img {
+        width: 100%;
+        max-width: 180px;
+        height: auto;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+      
+      .preview-column .pdf-preview {
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: #f9f9f9;
+        font-size: 12px;
+        color: #666;
+        text-align: center;
+      }
 
       .preview-images img {
         max-width: 200px;
@@ -329,19 +361,19 @@
           <!-- Project/NOP Number -->
           <div class="form-group">
             <label for="nopNumber">Project/NOP Number:</label>
-            <input type="text" id="nopNumber" name="nopNumber" required />
+            <input type="text" id="nopNumber" name="nopNumber" />
           </div>
 
           <!-- Sales Representative -->
           <div class="form-group">
             <label for="salesRep">Sales Representative:</label>
-            <input type="text" id="salesRep" name="salesRep" required />
+            <input type="text" id="salesRep" name="salesRep" />
           </div>
 
           <!-- Customer -->
           <div class="form-group">
             <label for="customer">Customer:</label>
-            <input type="text" id="customer" name="customer" required />
+            <input type="text" id="customer" name="customer" />
           </div>
 
           <!-- Cooler Type Checkboxes - Horizontal -->
@@ -513,11 +545,6 @@
             <h3>ChargeAir Cooler Configuration</h3>
             
             <div class="form-group">
-              <label for="chargeAirType">ChargeAir type:</label>
-              <input type="text" id="chargeAirType" name="chargeAirType" />
-            </div>
-
-            <div class="form-group">
               <label for="chargeAirEntryTemp">ChargeAir Entry Temp.:</label>
               <div class="inline-input-group">
                 <input type="number" id="chargeAirEntryTemp" name="chargeAirEntryTemp" step="0.1" />
@@ -534,8 +561,9 @@
                 <input type="number" id="chargeAirFlowrate" name="chargeAirFlowrate" step="0.1" />
                 <select id="chargeAirFlowrateUnit" name="chargeAirFlowrateUnit">
                   <option value="L/min">L/min</option>
-                  <option value="GPM">GPM</option>
+                  <option value="CFM">CFM</option>
                   <option value="m3/s">m³/s</option>
+                  <option value="m3/h">m³/h</option>
                   <option value="kg/s">kg/s</option>
                   <option value="lb/s">lb/s</option>
                 </select>
@@ -576,8 +604,8 @@
 
           <!-- Image Upload -->
           <div class="file-upload">
-            <label for="images">Upload Images:</label>
-            <input type="file" id="images" name="images" accept="image/*" multiple />
+            <label for="images">Upload Images/PDFs:</label>
+            <input type="file" id="images" name="images" accept="image/*,.pdf" multiple />
           </div>
 
           <!-- Remarks -->
@@ -596,35 +624,105 @@
 
       <!-- Right Panel - Preview -->
       <div class="preview-panel">
-        <div class="preview-content">
-          <h3>Cooler Configuration</h3>
+        <div class="config-area">
+          <div class="preview-content">
+            <h3>Cooler Configuration</h3>
+            
+            <!-- Instructions label in top right -->
+            <div id="instructionLabel" style="position: absolute; top: 20px; right: 180px; background: rgba(255,255,255,0.95); padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 12px; color: #555; max-width: 250px; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000; display: none;">
+              Please enter the minimum design envelope constraints (width, height, depth)<br>
+              Please specify units
+            </div>
           
-          <!-- Instructions label in top right -->
-          <div id="instructionLabel" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.95); padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 12px; color: #555; max-width: 250px; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000; display: none;">
-            Please enter the minimum design envelope constraints (width, height, depth)<br>
-            Please specify units
-          </div>
-          
-          <div id="coolerImageContainer" style="margin: 5px 0; text-align: center; position: relative; display: inline-block;">
+          <div id="coolerImageContainer" style="margin: 5px 0 0px -150px; text-align: center; position: relative; display: inline-block;">
             <img id="coolerImage" src="" alt="Select cooler types to see configuration" style="width: 120%; height: auto; display: none; border: 2px solid #ddd; border-radius: 8px;" />
             
             <!-- Overlay text boxes for dimensions -->
             <div id="dimensionOverlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none;">
               <!-- Common dimension boxes -->
-              <input type="text" id="coolerWidthBox" class="dimension-input" placeholder="Width" style="position: absolute; width: 80px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); pointer-events: auto;" />
-              <input type="text" id="coreHeightBox" class="dimension-input" placeholder="Core H" style="position: absolute; width: 80px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); pointer-events: auto;" />
-              <input type="text" id="coolerHeightBox" class="dimension-input" placeholder="Height" style="position: absolute; width: 80px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); pointer-events: auto;" />
-              <input type="text" id="depthBox" class="dimension-input" placeholder="Depth" style="position: absolute; width: 80px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); pointer-events: auto;" />
+              <div style="position: absolute; pointer-events: auto;" id="coolerWidthContainer">
+                <input type="text" id="coolerWidthBox" class="dimension-input" placeholder="Width" style="width: 60px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); display: inline-block;" />
+                <select id="coolerWidthUnit" style="width: 50px; height: 27px; font-size: 10px; border: 1px solid #333; background: rgba(255,255,255,0.9); display: inline-block; margin-left: 2px;">
+                  <option value="mm">mm</option>
+                  <option value="cm">cm</option>
+                  <option value="m">m</option>
+                  <option value="inch">inch</option>
+                  <option value="ft">ft</option>
+                </select>
+              </div>
+              <div style="position: absolute; pointer-events: auto;" id="coreHeightContainer">
+                <input type="text" id="coreHeightBox" class="dimension-input" placeholder="Core H" style="width: 60px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); display: inline-block;" />
+                <select id="coreHeightUnit" style="width: 50px; height: 27px; font-size: 10px; border: 1px solid #333; background: rgba(255,255,255,0.9); display: inline-block; margin-left: 2px;">
+                  <option value="mm">mm</option>
+                  <option value="cm">cm</option>
+                  <option value="m">m</option>
+                  <option value="inch">inch</option>
+                  <option value="ft">ft</option>
+                </select>
+              </div>
+              <div style="position: absolute; pointer-events: auto;" id="coolerHeightContainer">
+                <input type="text" id="coolerHeightBox" class="dimension-input" placeholder="Height" style="width: 60px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); display: inline-block;" />
+                <select id="coolerHeightUnit" style="width: 50px; height: 27px; font-size: 10px; border: 1px solid #333; background: rgba(255,255,255,0.9); display: inline-block; margin-left: 2px;">
+                  <option value="mm">mm</option>
+                  <option value="cm">cm</option>
+                  <option value="m">m</option>
+                  <option value="inch">inch</option>
+                  <option value="ft">ft</option>
+                </select>
+              </div>
+              <div style="position: absolute; pointer-events: auto;" id="depthContainer">
+                <input type="text" id="depthBox" class="dimension-input" placeholder="Depth" style="width: 60px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); display: inline-block;" />
+                <select id="depthUnit" style="width: 50px; height: 27px; font-size: 10px; border: 1px solid #333; background: rgba(255,255,255,0.9); display: inline-block; margin-left: 2px;">
+                  <option value="mm">mm</option>
+                  <option value="cm">cm</option>
+                  <option value="m">m</option>
+                  <option value="inch">inch</option>
+                  <option value="ft">ft</option>
+                </select>
+              </div>
               
               <!-- Core width boxes (variable number) -->
-              <input type="text" id="coreWidth1Box" class="dimension-input core-width" placeholder="Core W1" style="position: absolute; width: 80px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); pointer-events: auto; display: none;" />
-              <input type="text" id="coreWidth2Box" class="dimension-input core-width" placeholder="Core W2" style="position: absolute; width: 80px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); pointer-events: auto; display: none;" />
-              <input type="text" id="coreWidth3Box" class="dimension-input core-width" placeholder="Core W3" style="position: absolute; width: 80px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); pointer-events: auto; display: none;" />
+              <div style="position: absolute; pointer-events: auto; display: none;" id="coreWidth1Container" class="core-width">
+                <input type="text" id="coreWidth1Box" class="dimension-input" placeholder="Core W1" style="width: 60px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); display: inline-block;" />
+                <select id="coreWidth1Unit" style="width: 50px; height: 27px; font-size: 10px; border: 1px solid #333; background: rgba(255,255,255,0.9); display: inline-block; margin-left: 2px;">
+                  <option value="mm">mm</option>
+                  <option value="cm">cm</option>
+                  <option value="m">m</option>
+                  <option value="inch">inch</option>
+                  <option value="ft">ft</option>
+                </select>
+              </div>
+              <div style="position: absolute; pointer-events: auto; display: none;" id="coreWidth2Container" class="core-width">
+                <input type="text" id="coreWidth2Box" class="dimension-input" placeholder="Core W2" style="width: 60px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); display: inline-block;" />
+                <select id="coreWidth2Unit" style="width: 50px; height: 27px; font-size: 10px; border: 1px solid #333; background: rgba(255,255,255,0.9); display: inline-block; margin-left: 2px;">
+                  <option value="mm">mm</option>
+                  <option value="cm">cm</option>
+                  <option value="m">m</option>
+                  <option value="inch">inch</option>
+                  <option value="ft">ft</option>
+                </select>
+              </div>
+              <div style="position: absolute; pointer-events: auto; display: none;" id="coreWidth3Container" class="core-width">
+                <input type="text" id="coreWidth3Box" class="dimension-input" placeholder="Core W3" style="width: 60px; height: 25px; font-size: 12px; text-align: center; border: 1px solid #333; background: rgba(255,255,255,0.9); display: inline-block;" />
+                <select id="coreWidth3Unit" style="width: 50px; height: 27px; font-size: 10px; border: 1px solid #333; background: rgba(255,255,255,0.9); display: inline-block; margin-left: 2px;">
+                  <option value="mm">mm</option>
+                  <option value="cm">cm</option>
+                  <option value="m">m</option>
+                  <option value="inch">inch</option>
+                  <option value="ft">ft</option>
+                </select>
+              </div>
             </div>
             
             <p id="coolerImagePlaceholder" style="color: #888; font-style: italic;">Select cooler types to see configuration diagram</p>
           </div>
-          <div class="preview-images" id="imagePreview"></div>
+        </div>
+        </div>
+        
+        <!-- Upload Preview Column -->
+        <div id="uploadPreviewColumn" style="width: 200px; padding: 10px; background: #fafafa; border-left: 1px solid #ddd; overflow-y: auto;">
+          <h3 style="font-size: 14px; margin-bottom: 10px; color: #555;">Uploaded Files</h3>
+          <div id="imagePreview" class="preview-column"></div>
         </div>
       </div>
     </div>
@@ -745,21 +843,21 @@
         document.querySelectorAll('.core-width').forEach(box => box.style.display = 'none');
         
         // Common positions (approximate % from top-left of image)
-        document.getElementById('coolerWidthBox').style.left = '20%';
-        document.getElementById('coolerWidthBox').style.top = '82%';
+        document.getElementById('coolerWidthContainer').style.left = '20%';
+        document.getElementById('coolerWidthContainer').style.top = '82%';
         
-        document.getElementById('coolerHeightBox').style.left = '100%';
-        document.getElementById('coolerHeightBox').style.top = '60%';
+        document.getElementById('coolerHeightContainer').style.left = '100%';
+        document.getElementById('coolerHeightContainer').style.top = '60%';
         
-        document.getElementById('coreHeightBox').style.left = '75%';
-        document.getElementById('coreHeightBox').style.top = '60%';
+        document.getElementById('coreHeightContainer').style.left = '75%';
+        document.getElementById('coreHeightContainer').style.top = '60%';
         
-        document.getElementById('depthBox').style.left = '80%';
-        document.getElementById('depthBox').style.top = '20%';
+        document.getElementById('depthContainer').style.left = '80%';
+        document.getElementById('depthContainer').style.top = '20%';
         
         // Show and position core width boxes based on configuration
         if (coreCount >= 1) {
-          const core1 = document.getElementById('coreWidth1Box');
+          const core1 = document.getElementById('coreWidth1Container');
           core1.style.display = 'block';
           
           if (coreCount === 1) {
@@ -769,7 +867,7 @@
             core1.style.left = '20%';
             core1.style.top = '10%';
             
-            const core2 = document.getElementById('coreWidth2Box');
+            const core2 = document.getElementById('coreWidth2Container');
             core2.style.display = 'block';
             core2.style.left = '50%';
             core2.style.top = '15%';
@@ -777,12 +875,12 @@
             core1.style.left = '15%';
             core1.style.top = '10%';
             
-            const core2 = document.getElementById('coreWidth2Box');
+            const core2 = document.getElementById('coreWidth2Container');
             core2.style.display = 'block';
             core2.style.left = '35%';
             core2.style.top = '20%';
             
-            const core3 = document.getElementById('coreWidth3Box');
+            const core3 = document.getElementById('coreWidth3Container');
             core3.style.display = 'block';
             core3.style.left = '55%';
             core3.style.top = '30%';
@@ -886,8 +984,7 @@
       // Handle image preview
       document.getElementById('images').addEventListener('change', function(e) {
         const previewContainer = document.getElementById('imagePreview');
-        previewContainer.innerHTML = '';
-        uploadedImages = []; // Reset uploaded images array
+        // Don't clear uploadedImages array - keep existing uploads
         
         const files = e.target.files;
         for (let i = 0; i < files.length; i++) {
@@ -897,6 +994,7 @@
             reader.onload = function(e) {
               const img = document.createElement('img');
               img.src = e.target.result;
+              img.title = file.name;
               previewContainer.appendChild(img);
               
               // Store image data for PDF
@@ -907,6 +1005,23 @@
               });
             };
             reader.readAsDataURL(file);
+          } else if (file.type === 'application/pdf') {
+            // Store PDF file for merging
+            const reader = new FileReader();
+            reader.onload = function(e) {
+              const pdfPreview = document.createElement('div');
+              pdfPreview.className = 'pdf-preview';
+              pdfPreview.innerHTML = `📄 ${file.name}`;
+              previewContainer.appendChild(pdfPreview);
+              
+              uploadedImages.push({
+                name: file.name,
+                data: e.target.result,
+                type: file.type,
+                isPdf: true
+              });
+            };
+            reader.readAsArrayBuffer(file);
           }
         }
       });
@@ -1021,8 +1136,8 @@
             x: 160,
             y: height - 60,
             size: 20,
-            font: boldFont,
-            color: PDFLib.rgb(0, 0, 0.8),
+            font: font,
+            color: PDFLib.rgb(0, 0, 0),
           });
           
           try {
@@ -1054,14 +1169,14 @@
                 console.log('Config image bytes received:', configBytes.byteLength);
                 const configImage = await pdfDoc.embedPng(configBytes);
                 
-                // Add configuration image with proper aspect ratio
-                const configScale = Math.min(250 / configImage.width, 200 / configImage.height);
+                // Add configuration image with proper aspect ratio - 50% bigger
+                const configScale = Math.min(375 / configImage.width, 300 / configImage.height); // Increased from 250/200 to 375/300
                 const configWidth = configImage.width * configScale;
                 const configHeight = configImage.height * configScale;
                 
                 page.drawImage(configImage, {
-                  x: 300 + (250 - configWidth) / 2, // Center horizontally in the allocated space
-                  y: height - 350,
+                  x: 280 + (375 - configWidth) / 2, // Moved left from 300, increased allocated space from 250 to 375
+                  y: height - 380, // Moved down slightly to accommodate larger image
                   width: configWidth,
                   height: configHeight,
                 });
@@ -1071,10 +1186,10 @@
                 console.log('Could not load config image, status:', configResponse.status);
                 // Draw placeholder rectangle
                 page.drawRectangle({
-                  x: 300,
-                  y: height - 350,
-                  width: 250,
-                  height: 200,
+                  x: 280,
+                  y: height - 380,
+                  width: 375,
+                  height: 300,
                   borderColor: PDFLib.rgb(0.8, 0.8, 0.8),
                   borderWidth: 2,
                   color: PDFLib.rgb(0.95, 0.95, 0.95),
@@ -1100,9 +1215,26 @@
           // Apply text overlays - simple positioning for the RAD_OC_CAC template
           const textOverlays = [];
           
-          // Basic project information
-          let infoY = height - 150;
+          // Add current date
+          const currentDate = new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long', 
+            day: 'numeric'
+          });
           
+          let infoY = height - 130;
+          
+          textOverlays.push({ 
+            text: `Date: ${currentDate}`, 
+            x: 50, 
+            y: infoY, 
+            size: 10, 
+            font: font,
+            color: PDFLib.rgb(0.4, 0.4, 0.4)
+          });
+          infoY -= 25;
+          
+          // Basic project information
           textOverlays.push({ 
             text: 'Project Information:', 
             x: 50, 
@@ -1115,12 +1247,12 @@
           
           if (formData.get('nopNumber')) {
             textOverlays.push({ 
-              text: 'NOP Number:', 
+              text: 'Project Number:', 
               x: 50, y: infoY, size: 10, font: boldFont 
             });
             textOverlays.push({ 
               text: formData.get('nopNumber'), 
-              x: 150, y: infoY, size: 10, font: font 
+              x: 160, y: infoY, size: 10, font: font 
             });
             infoY -= 20;
           }
@@ -1132,7 +1264,7 @@
             });
             textOverlays.push({ 
               text: formData.get('salesRep'), 
-              x: 150, y: infoY, size: 10, font: font 
+              x: 160, y: infoY, size: 10, font: font 
             });
             infoY -= 20;
           }
@@ -1144,7 +1276,7 @@
             });
             textOverlays.push({ 
               text: formData.get('customer'), 
-              x: 150, y: infoY, size: 10, font: font 
+              x: 160, y: infoY, size: 10, font: font 
             });
             infoY -= 20;
           }
@@ -1171,7 +1303,7 @@
             });
             textOverlays.push({ 
               text: tempText, 
-              x: 150, y: infoY, size: 10, font: font 
+              x: 160, y: infoY, size: 10, font: font 
             });
             infoY -= 20;
           }
@@ -1184,57 +1316,108 @@
             });
             textOverlays.push({ 
               text: altText, 
-              x: 150, y: infoY, size: 10, font: font 
+              x: 160, y: infoY, size: 10, font: font 
             });
             infoY -= 20;
           }
           
           // Fan information
+          if (formData.get('fan') || formData.get('fanCount') || formData.get('maxSoundLevel')) {
+            infoY -= 10;
+            textOverlays.push({ 
+              text: 'Fan Information:', 
+              x: 50, 
+              y: infoY, 
+              size: 12, 
+              font: boldFont,
+              color: PDFLib.rgb(0.2, 0.2, 0.8)
+            });
+            infoY -= 25;
+          }
+          
           if (formData.get('fan')) {
             textOverlays.push({ 
-              text: formData.get('fan'), 
-              x: 150, y: height - 280, size: 12, font: font 
+              text: 'Fan Type:', 
+              x: 50, y: infoY, size: 10, font: boldFont 
             });
+            textOverlays.push({ 
+              text: formData.get('fan'), 
+              x: 160, y: infoY, size: 10, font: font 
+            });
+            infoY -= 20;
           }
           
           if (formData.get('fanCount')) {
             textOverlays.push({ 
-              text: formData.get('fanCount'), 
-              x: 300, y: height - 280, size: 12, font: font 
+              text: 'Fan Count:', 
+              x: 50, y: infoY, size: 10, font: boldFont 
             });
+            textOverlays.push({ 
+              text: formData.get('fanCount'), 
+              x: 160, y: infoY, size: 10, font: font 
+            });
+            infoY -= 20;
           }
           
           if (formData.get('maxSoundLevel')) {
-            const noiseText = formData.get('maxSoundLevel') + ' ' + (formData.get('soundUnit') || 'dB(A)');
+            const soundText = formData.get('maxSoundLevel') + ' ' + (formData.get('soundUnit') || 'dB(A)');
             textOverlays.push({ 
-              text: noiseText, 
-              x: 450, y: height - 280, size: 12, font: font 
+              text: 'Max Sound Level:', 
+              x: 50, y: infoY, size: 10, font: boldFont 
             });
+            textOverlays.push({ 
+              text: soundText, 
+              x: 160, y: infoY, size: 10, font: font 
+            });
+            infoY -= 20;
           }
           
-          // Dimension overlays from the dimension boxes
-          const dimensions = [
-            { id: 'coolerWidthBox', x: 100, y: height - 450 },
-            { id: 'coolerHeightBox', x: 500, y: height - 350 },
-            { id: 'coreHeightBox', x: 450, y: height - 380 },
-            { id: 'depthBox', x: 480, y: height - 200 },
-            { id: 'coreWidth1Box', x: 180, y: height - 520 },
-            { id: 'coreWidth2Box', x: 280, y: height - 500 },
-            { id: 'coreWidth3Box', x: 380, y: height - 480 },
+          // Dimensions section - positioned vertically under configuration image
+          let dimY = height - 450; // Moved down to accommodate larger config image
+          let hasDimensions = false;
+          
+          // Check if any dimensions are filled
+          const dimensionChecks = [
+            { label: 'Cooler Width', id: 'coolerWidthBox', unitId: 'coolerWidthUnit' },
+            { label: 'Cooler Height', id: 'coolerHeightBox', unitId: 'coolerHeightUnit' },
+            { label: 'Core Height', id: 'coreHeightBox', unitId: 'coreHeightUnit' },
+            { label: 'Depth', id: 'depthBox', unitId: 'depthUnit' },
+            { label: 'Core Width 1', id: 'coreWidth1Box', unitId: 'coreWidth1Unit' },
+            { label: 'Core Width 2', id: 'coreWidth2Box', unitId: 'coreWidth2Unit' },
+            { label: 'Core Width 3', id: 'coreWidth3Box', unitId: 'coreWidth3Unit' },
           ];
           
-          dimensions.forEach(dim => {
-            const value = document.getElementById(dim.id).value;
+          dimensionChecks.forEach(dimCheck => {
+            const value = document.getElementById(dimCheck.id).value;
             if (value && value.trim()) {
+              if (!hasDimensions) {
+                textOverlays.push({ 
+                  text: 'Dimensions:', 
+                  x: 280, // Moved left to use the space better
+                  y: dimY, 
+                  size: 12, 
+                  font: boldFont,
+                  color: PDFLib.rgb(0.2, 0.2, 0.8)
+                });
+                dimY -= 25;
+                hasDimensions = true;
+              }
+              
+              const unit = document.getElementById(dimCheck.unitId).value || 'mm';
               textOverlays.push({ 
-                text: value, 
-                x: dim.x, y: dim.y, size: 10, font: font 
+                text: `${dimCheck.label}:`, 
+                x: 280, y: dimY, size: 10, font: boldFont // Moved left to match
               });
+              textOverlays.push({ 
+                text: value + ' ' + unit, 
+                x: 390, y: dimY, size: 10, font: font // Adjusted to maintain spacing
+              });
+              dimY -= 20;
             }
           });
           
-          // Cooler specifications
-          let specY = height - 550;
+          // Cooler specifications - position relative to where infoY ends
+          let specY = infoY - 40;
           
           if (coolerTypes.includes('Oil')) {
             textOverlays.push({ 
@@ -1322,7 +1505,6 @@
             specY -= 20;
             
             const chargeAirSpecs = [
-              { label: 'Type', field: 'chargeAirType' },
               { label: 'Entry Temp', field: 'chargeAirEntryTemp', unit: 'chargeAirEntryTempUnit' },
               { label: 'Flowrate', field: 'chargeAirFlowrate', unit: 'chargeAirFlowrateUnit' },
               { label: 'Pressure', field: 'chargeAirPressure', unit: 'chargeAirPressureUnit' },
@@ -1391,70 +1573,85 @@
           // Add uploaded images as separate pages
           console.log('uploadedImages array:', uploadedImages);
           if (uploadedImages && uploadedImages.length > 0) {
-            console.log(`Adding ${uploadedImages.length} uploaded images as separate pages...`);
+            console.log(`Adding ${uploadedImages.length} uploaded files as separate pages...`);
             
             for (let i = 0; i < uploadedImages.length; i++) {
-              const imageData = uploadedImages[i];
-              console.log(`Processing image ${i + 1}:`, imageData.name, imageData.type);
+              const fileData = uploadedImages[i];
+              console.log(`Processing file ${i + 1}:`, fileData.name, fileData.type);
               
               try {
-                // Add new page for each image
-                const imagePage = pdfDoc.addPage([595.28, 841.89]); // A4 size
-                const { width: pageWidth, height: pageHeight } = imagePage.getSize();
-                
-                // Convert base64 to array buffer
-                const imageBytes = Uint8Array.from(atob(imageData.data), c => c.charCodeAt(0));
-                console.log(`Image bytes length: ${imageBytes.length}`);
-                
-                // Determine image type and embed accordingly
-                let embedImage;
-                if (imageData.type.includes('png')) {
-                  embedImage = await pdfDoc.embedPng(imageBytes);
-                } else if (imageData.type.includes('jpg') || imageData.type.includes('jpeg')) {
-                  embedImage = await pdfDoc.embedJpg(imageBytes);
+                if (fileData.isPdf) {
+                  // Handle PDF file - merge its pages
+                  console.log('Merging PDF file:', fileData.name);
+                  const uploadedPdfBytes = new Uint8Array(fileData.data);
+                  const uploadedPdf = await PDFLib.PDFDocument.load(uploadedPdfBytes);
+                  const uploadedPages = await pdfDoc.copyPages(uploadedPdf, uploadedPdf.getPageIndices());
+                  
+                  uploadedPages.forEach((page) => {
+                    pdfDoc.addPage(page);
+                  });
+                  
+                  console.log(`✓ PDF file ${fileData.name} merged successfully!`);
                 } else {
-                  console.log(`Unsupported image type: ${imageData.type}, skipping image ${i + 1}`);
-                  continue;
+                  // Handle image file
+                  // Add new page for each image
+                  const imagePage = pdfDoc.addPage([595.28, 841.89]); // A4 size
+                  const { width: pageWidth, height: pageHeight } = imagePage.getSize();
+                  
+                  // Convert base64 to array buffer
+                  const imageBytes = Uint8Array.from(atob(fileData.data), c => c.charCodeAt(0));
+                  console.log(`Image bytes length: ${imageBytes.length}`);
+                  
+                  // Determine image type and embed accordingly
+                  let embedImage;
+                  if (fileData.type.includes('png')) {
+                    embedImage = await pdfDoc.embedPng(imageBytes);
+                  } else if (fileData.type.includes('jpg') || fileData.type.includes('jpeg')) {
+                    embedImage = await pdfDoc.embedJpg(imageBytes);
+                  } else {
+                    console.log(`Unsupported image type: ${fileData.type}, skipping image ${i + 1}`);
+                    continue;
+                  }
+                  
+                  console.log(`Embedded image dimensions: ${embedImage.width}x${embedImage.height}`);
+                  
+                  // Calculate scaling to fit image on page with margins
+                  const margin = 50;
+                  const maxWidth = pageWidth - (margin * 2);
+                  const maxHeight = pageHeight - (margin * 3); // Extra margin for title
+                  
+                  const scale = Math.min(maxWidth / embedImage.width, maxHeight / embedImage.height);
+                  const imageWidth = embedImage.width * scale;
+                  const imageHeight = embedImage.height * scale;
+                  
+                  // Center the image
+                  const imageX = (pageWidth - imageWidth) / 2;
+                  const imageY = (pageHeight - imageHeight) / 2;
+                  
+                  console.log(`Image placement: ${imageX}, ${imageY}, ${imageWidth}x${imageHeight}`);
+                  
+                  // Add title
+                  imagePage.drawText(`Uploaded Image ${i + 1}: ${fileData.name}`, {
+                    x: margin,
+                    y: pageHeight - margin,
+                    size: 14,
+                    font: boldFont,
+                    color: PDFLib.rgb(0, 0, 0),
+                  });
+                  
+                  // Draw the image
+                  imagePage.drawImage(embedImage, {
+                    x: imageX,
+                    y: imageY,
+                    width: imageWidth,
+                    height: imageHeight,
+                  });
+                  
+                  console.log(`✓ Added uploaded image ${i + 1}: ${fileData.name}`);
                 }
                 
-                console.log(`Embedded image dimensions: ${embedImage.width}x${embedImage.height}`);
-                
-                // Calculate scaling to fit image on page with margins
-                const margin = 50;
-                const maxWidth = pageWidth - (margin * 2);
-                const maxHeight = pageHeight - (margin * 3); // Extra margin for title
-                
-                const scale = Math.min(maxWidth / embedImage.width, maxHeight / embedImage.height);
-                const imageWidth = embedImage.width * scale;
-                const imageHeight = embedImage.height * scale;
-                
-                // Center the image
-                const imageX = (pageWidth - imageWidth) / 2;
-                const imageY = (pageHeight - imageHeight) / 2;
-                
-                console.log(`Image placement: ${imageX}, ${imageY}, ${imageWidth}x${imageHeight}`);
-                
-                // Add title
-                imagePage.drawText(`Uploaded Image ${i + 1}: ${imageData.name}`, {
-                  x: margin,
-                  y: pageHeight - margin,
-                  size: 14,
-                  font: boldFont,
-                  color: PDFLib.rgb(0, 0, 0),
-                });
-                
-                // Draw the image
-                imagePage.drawImage(embedImage, {
-                  x: imageX,
-                  y: imageY,
-                  width: imageWidth,
-                  height: imageHeight,
-                });
-                
-                console.log(`✓ Added uploaded image ${i + 1}: ${imageData.name}`);
-                
               } catch (error) {
-                console.error(`Error adding uploaded image ${i + 1}:`, error);
+                console.error(`Error adding uploaded file ${i + 1}:`, error);
               }
             }
           } else {
@@ -1764,10 +1961,10 @@ Note: Please manually attach any uploaded images and cooler configuration diagra
         );
         
         const dimensions = [
-          'Cooler Width: ' + (document.getElementById('coolerWidthBox').value || 'Not specified'),
-          'Cooler Height: ' + (document.getElementById('coolerHeightBox').value || 'Not specified'),
-          'Core Height: ' + (document.getElementById('coreHeightBox').value || 'Not specified'),
-          'Depth: ' + (document.getElementById('depthBox').value || 'Not specified')
+          'Cooler Width: ' + (document.getElementById('coolerWidthBox').value ? document.getElementById('coolerWidthBox').value + ' ' + (document.getElementById('coolerWidthUnit').value || 'mm') : 'Not specified'),
+          'Cooler Height: ' + (document.getElementById('coolerHeightBox').value ? document.getElementById('coolerHeightBox').value + ' ' + (document.getElementById('coolerHeightUnit').value || 'mm') : 'Not specified'),
+          'Core Height: ' + (document.getElementById('coreHeightBox').value ? document.getElementById('coreHeightBox').value + ' ' + (document.getElementById('coreHeightUnit').value || 'mm') : 'Not specified'),
+          'Depth: ' + (document.getElementById('depthBox').value ? document.getElementById('depthBox').value + ' ' + (document.getElementById('depthUnit').value || 'mm') : 'Not specified')
         ];
         
         // Add core widths if they have values
@@ -1775,9 +1972,9 @@ Note: Please manually attach any uploaded images and cooler configuration diagra
         const core2 = document.getElementById('coreWidth2Box').value;
         const core3 = document.getElementById('coreWidth3Box').value;
         
-        if (core1) dimensions.push('Core Width 1: ' + core1);
-        if (core2) dimensions.push('Core Width 2: ' + core2);
-        if (core3) dimensions.push('Core Width 3: ' + core3);
+        if (core1) dimensions.push('Core Width 1: ' + core1 + ' ' + (document.getElementById('coreWidth1Unit').value || 'mm'));
+        if (core2) dimensions.push('Core Width 2: ' + core2 + ' ' + (document.getElementById('coreWidth2Unit').value || 'mm'));
+        if (core3) dimensions.push('Core Width 3: ' + core3 + ' ' + (document.getElementById('coreWidth3Unit').value || 'mm'));
         
         dimensions.forEach(line => {
           children.push(

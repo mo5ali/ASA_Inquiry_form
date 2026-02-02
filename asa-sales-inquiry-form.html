@@ -629,7 +629,7 @@
             <h3>Cooler Configuration</h3>
             
             <!-- Instructions label in top right -->
-            <div id="instructionLabel" style="position: absolute; top: 20px; right: 180px; background: rgba(255,255,255,0.95); padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 12px; color: #555; max-width: 250px; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000; display: none;">
+            <div id="instructionLabel" style="position: absolute; top: 20px; right: 220px; background: rgba(255,255,255,0.95); padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 12px; color: #555; max-width: 250px; text-align: left; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 1000; display: none;">
               Please enter the minimum design envelope constraints (width, height, depth)<br>
               Please specify units
             </div>
@@ -1175,7 +1175,7 @@
                 const configHeight = configImage.height * configScale;
                 
                 page.drawImage(configImage, {
-                  x: 280 + (375 - configWidth) / 2, // Moved left from 300, increased allocated space from 250 to 375
+                  x: 250 + (375 - configWidth) / 2, // Moved further left from 280 to 250
                   y: height - 380, // Moved down slightly to accommodate larger image
                   width: configWidth,
                   height: configHeight,
@@ -1660,7 +1660,19 @@
           
           // Save the PDF
           const pdfBytes = await pdfDoc.save();
-          const filename = `ASA_Inquiry_${templateName}_${(formData.get('nopNumber') || 'Draft').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+          
+          // Create filename in format: Project_customer_DDMMYYYY_sales representative.pdf
+          const today = new Date();
+          const day = String(today.getDate()).padStart(2, '0');
+          const month = String(today.getMonth() + 1).padStart(2, '0');
+          const year = today.getFullYear();
+          const dateStr = `${day}${month}${year}`;
+          
+          const project = (formData.get('nopNumber') || 'Project').replace(/[^a-zA-Z0-9]/g, '_');
+          const customer = (formData.get('customer') || 'Customer').replace(/[^a-zA-Z0-9]/g, '_');
+          const salesRep = (formData.get('salesRep') || 'SalesRep').replace(/[^a-zA-Z0-9]/g, '_');
+          
+          const filename = `${project}_${customer}_${dateStr}_${salesRep}.pdf`;
           
           // Create download link
           const blob = new Blob([pdfBytes], { type: 'application/pdf' });

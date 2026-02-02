@@ -558,7 +558,7 @@
 
           <!-- Water Cooler Section (Conditional) -->
           <div id="waterSection" class="conditional-section">
-            <h3>Water Cooler Configuration</h3>
+            <input type="text" id="waterCoolerTitle" name="waterCoolerTitle" value="Water Cooler Configuration" style="font-size: 18px; font-weight: bold; border: 1px solid #ddd; padding: 5px; margin-bottom: 15px; width: 100%; background: white;" />
             
             <div class="form-group">
               <label for="medium">Medium:</label>
@@ -609,7 +609,7 @@
 
           <!-- ChargeAir Cooler Section (Conditional) -->
           <div id="chargeAirSection" class="conditional-section">
-            <h3>ChargeAir Cooler Configuration</h3>
+            <input type="text" id="chargeAirCoolerTitle" name="chargeAirCoolerTitle" value="ChargeAir Cooler Configuration" style="font-size: 18px; font-weight: bold; border: 1px solid #ddd; padding: 5px; margin-bottom: 15px; width: 100%; background: white;" />
             
             <div class="form-group">
               <label for="chargeAirEntryTemp">ChargeAir Entry Temp.:</label>
@@ -1057,6 +1057,32 @@
         }
       });
 
+      // Handle Oil Desired Performance 2 dropdown (for second oil cooler)
+      document.getElementById('oilDesiredPerf2').addEventListener('change', function() {
+        const perfUnit = document.getElementById('oilPerfUnit2');
+        perfUnit.innerHTML = '';
+        
+        if (this.value === 'capacity') {
+          perfUnit.innerHTML = `
+            <option value="kW">kW</option>
+            <option value="BTU/min">BTU/min</option>
+            <option value="HP">HP</option>
+          `;
+        } else if (this.value === 'specific') {
+          perfUnit.innerHTML = `
+            <option value="kW/°C">kW/°C</option>
+            <option value="BTU/min.F">BTU/min.F</option>
+          `;
+        } else if (this.value === 'exit') {
+          perfUnit.innerHTML = `
+            <option value="°C">°C</option>
+            <option value="°F">°F</option>
+          `;
+        } else {
+          perfUnit.innerHTML = '<option value="">Select performance first...</option>';
+        }
+      });
+
       // Handle Water Desired Performance dropdown
       document.getElementById('waterDesiredPerf').addEventListener('change', function() {
         const perfUnit = document.getElementById('waterPerfUnit');
@@ -1207,14 +1233,27 @@
           // Get form data
           const formData = new FormData(document.getElementById('inquiryForm'));
           const coolerTypes = [];
-          if (document.getElementById('oilCooler').value == 1) coolerTypes.push('Oil');
-          if (document.getElementById('waterCooler').value == 1) coolerTypes.push('Water'); 
-          if (document.getElementById('chargeAirCooler').value == 1) coolerTypes.push('ChargeAir');
+          const oilValue = parseInt(document.getElementById('oilCooler').value) || 0;
+          const waterValue = parseInt(document.getElementById('waterCooler').value) || 0;
+          const chargeAirValue = parseInt(document.getElementById('chargeAirCooler').value) || 0;
+          
+          if (oilValue >= 1) coolerTypes.push('Oil');
+          if (waterValue >= 1) coolerTypes.push('Water'); 
+          if (chargeAirValue >= 1) coolerTypes.push('ChargeAir');
           
           // Determine template based on checkboxes  
           let templateName = '';
           
-          if (coolerTypes.includes('Water') && coolerTypes.includes('Oil') && coolerTypes.includes('ChargeAir')) {
+          // Check for 2 oil coolers first
+          if (oilValue === 2 && waterValue === 1 && chargeAirValue === 1) {
+            templateName = 'RAD_OC_OC_CAC';
+          } else if (oilValue === 2 && waterValue === 1 && chargeAirValue === 0) {
+            templateName = 'RAD_OC_OC';
+          } else if (oilValue === 2 && waterValue === 0 && chargeAirValue === 1) {
+            templateName = 'OC_OC_CAC';
+          } else if (oilValue === 2 && waterValue === 0 && chargeAirValue === 0) {
+            templateName = 'OC_OC';
+          } else if (coolerTypes.includes('Water') && coolerTypes.includes('Oil') && coolerTypes.includes('ChargeAir')) {
             templateName = 'RAD_OC_CAC';
           } else if (coolerTypes.includes('Water') && coolerTypes.includes('Oil')) {
             templateName = 'RAD_OC';
@@ -1579,9 +1618,10 @@
           // Cooler specifications - position relative to where infoY ends
           let specY = infoY - 40;
           
-          if (coolerTypes.includes('Oil')) {
+          if (oilValue >= 1) {
+            const oilTitle = document.getElementById('oilCoolerTitle').value || 'Oil Cooler Configuration';
             textOverlays.push({ 
-              text: 'Oil Cooler:', 
+              text: oilTitle, 
               x: 50, 
               y: specY, 
               size: 12, 
@@ -1594,8 +1634,7 @@
               { label: 'Type', field: 'oilType' },
               { label: 'Entry Temp', field: 'oilEntryTemp', unit: 'oilEntryTempUnit' },
               { label: 'Flowrate', field: 'oilFlowrate', unit: 'oilFlowrateUnit' },
-              { label: 'Performance', field: 'oilDesiredPerf' },
-              { label: 'Value', field: 'oilPerfValue', unit: 'oilPerfUnit' },
+              { label: 'Target performance', field: 'oilPerfValue', unit: 'oilPerfUnit' },
             ];
             
             oilSpecs.forEach(spec => {
@@ -1616,9 +1655,47 @@
             specY -= 10;
           }
           
-          if (coolerTypes.includes('Water')) {
+          if (oilValue === 2) {
+            const oilTitle2 = document.getElementById('oilCoolerTitle2').value || 'Oil Cooler 2 Configuration';
             textOverlays.push({ 
-              text: 'Water Cooler:', 
+              text: oilTitle2, 
+              x: 50, 
+              y: specY, 
+              size: 12, 
+              font: boldFont,
+              color: PDFLib.rgb(0.2, 0.2, 0.8)
+            });
+            specY -= 20;
+            
+            const oilSpecs2 = [
+              { label: 'Type', field: 'oilType2' },
+              { label: 'Entry Temp', field: 'oilEntryTemp2', unit: 'oilEntryTempUnit2' },
+              { label: 'Flowrate', field: 'oilFlowrate2', unit: 'oilFlowrateUnit2' },
+              { label: 'Target performance', field: 'oilPerfValue2', unit: 'oilPerfUnit2' },
+            ];
+            
+            oilSpecs2.forEach(spec => {
+              const value = formData.get(spec.field);
+              if (value && value.trim()) {
+                const unit = spec.unit ? formData.get(spec.unit) : '';
+                const text = `${spec.label}: ${value}${unit ? ' ' + unit : ''}`;
+                textOverlays.push({ 
+                  text: text, 
+                  x: 70, 
+                  y: specY, 
+                  size: 10, 
+                  font: font 
+                });
+                specY -= 15;
+              }
+            });
+            specY -= 10;
+          }
+          
+          if (waterValue >= 1) {
+            const waterTitle = document.getElementById('waterCoolerTitle').value || 'Water Cooler Configuration';
+            textOverlays.push({ 
+              text: waterTitle, 
               x: 50, 
               y: specY, 
               size: 12, 
@@ -1631,8 +1708,7 @@
               { label: 'Medium', field: 'medium' },
               { label: 'Entry Temp', field: 'waterEntryTemp', unit: 'waterEntryTempUnit' },
               { label: 'Flowrate', field: 'waterFlowrate', unit: 'waterFlowrateUnit' },
-              { label: 'Performance', field: 'waterDesiredPerf' },
-              { label: 'Value', field: 'waterPerfValue', unit: 'waterPerfUnit' },
+              { label: 'Target performance', field: 'waterPerfValue', unit: 'waterPerfUnit' },
             ];
             
             waterSpecs.forEach(spec => {
@@ -1653,9 +1729,10 @@
             specY -= 10;
           }
           
-          if (coolerTypes.includes('ChargeAir')) {
+          if (chargeAirValue >= 1) {
+            const chargeAirTitle = document.getElementById('chargeAirCoolerTitle').value || 'ChargeAir Cooler Configuration';
             textOverlays.push({ 
-              text: 'Charge Air Cooler:', 
+              text: chargeAirTitle, 
               x: 50, 
               y: specY, 
               size: 12, 
@@ -1668,8 +1745,7 @@
               { label: 'Entry Temp', field: 'chargeAirEntryTemp', unit: 'chargeAirEntryTempUnit' },
               { label: 'Flowrate', field: 'chargeAirFlowrate', unit: 'chargeAirFlowrateUnit' },
               { label: 'Pressure', field: 'chargeAirPressure', unit: 'chargeAirPressureUnit' },
-              { label: 'Performance', field: 'chargeAirDesiredPerf' },
-              { label: 'Value', field: 'chargeAirPerfValue', unit: 'chargeAirPerfUnit' },
+              { label: 'Target performance', field: 'chargeAirPerfValue', unit: 'chargeAirPerfUnit' },
             ];
             
             chargeAirSpecs.forEach(spec => {
@@ -2181,34 +2257,47 @@ Note: Please manually attach any uploaded images and cooler configuration diagra
         }
         
         // Add cooler configurations
-        if (document.getElementById('oilCooler').checked) {
-          addCoolerConfigToWord(children, 'Oil Cooler Configuration', {
+        const oilValue = parseInt(document.getElementById('oilCooler').value) || 0;
+        if (oilValue >= 1) {
+          const oilTitle = document.getElementById('oilCoolerTitle').value || 'Oil Cooler Configuration';
+          addCoolerConfigToWord(children, oilTitle, {
             'Oil Type': formData.get('oilType'),
             'Entry Temp': (formData.get('oilEntryTemp') || '') + ' ' + (formData.get('oilEntryTempUnit') || ''),
             'Flowrate': (formData.get('oilFlowrate') || '') + ' ' + (formData.get('oilFlowrateUnit') || ''),
-            'Performance': formData.get('oilDesiredPerf'),
-            'Performance Value': (formData.get('oilPerfValue') || '') + ' ' + (formData.get('oilPerfUnit') || '')
+            'Target performance': (formData.get('oilPerfValue') || '') + ' ' + (formData.get('oilPerfUnit') || '')
           }, Paragraph, TextRun, HeadingLevel);
         }
         
-        if (document.getElementById('waterCooler').checked) {
-          addCoolerConfigToWord(children, 'Water Cooler Configuration', {
+        if (oilValue === 2) {
+          const oilTitle2 = document.getElementById('oilCoolerTitle2').value || 'Oil Cooler 2 Configuration';
+          addCoolerConfigToWord(children, oilTitle2, {
+            'Oil Type': formData.get('oilType2'),
+            'Entry Temp': (formData.get('oilEntryTemp2') || '') + ' ' + (formData.get('oilEntryTempUnit2') || ''),
+            'Flowrate': (formData.get('oilFlowrate2') || '') + ' ' + (formData.get('oilFlowrateUnit2') || ''),
+            'Target performance': (formData.get('oilPerfValue2') || '') + ' ' + (formData.get('oilPerfUnit2') || '')
+          }, Paragraph, TextRun, HeadingLevel);
+        }
+        
+        const waterValue = parseInt(document.getElementById('waterCooler').value) || 0;
+        if (waterValue >= 1) {
+          const waterTitle = document.getElementById('waterCoolerTitle').value || 'Water Cooler Configuration';
+          addCoolerConfigToWord(children, waterTitle, {
             'Medium': formData.get('medium'),
             'Entry Temp': (formData.get('waterEntryTemp') || '') + ' ' + (formData.get('waterEntryTempUnit') || ''),
             'Flowrate': (formData.get('waterFlowrate') || '') + ' ' + (formData.get('waterFlowrateUnit') || ''),
-            'Performance': formData.get('waterDesiredPerf'),
-            'Performance Value': (formData.get('waterPerfValue') || '') + ' ' + (formData.get('waterPerfUnit') || '')
+            'Target performance': (formData.get('waterPerfValue') || '') + ' ' + (formData.get('waterPerfUnit') || '')
           }, Paragraph, TextRun, HeadingLevel);
         }
         
-        if (document.getElementById('chargeAirCooler').checked) {
-          addCoolerConfigToWord(children, 'ChargeAir Cooler Configuration', {
+        const chargeAirValue = parseInt(document.getElementById('chargeAirCooler').value) || 0;
+        if (chargeAirValue >= 1) {
+          const chargeAirTitle = document.getElementById('chargeAirCoolerTitle').value || 'ChargeAir Cooler Configuration';
+          addCoolerConfigToWord(children, chargeAirTitle, {
             'ChargeAir Type': formData.get('chargeAirType'),
             'Entry Temp': (formData.get('chargeAirEntryTemp') || '') + ' ' + (formData.get('chargeAirEntryTempUnit') || ''),
             'Flowrate': (formData.get('chargeAirFlowrate') || '') + ' ' + (formData.get('chargeAirFlowrateUnit') || ''),
             'Pressure': (formData.get('chargeAirPressure') || '') + ' ' + (formData.get('chargeAirPressureUnit') || ''),
-            'Performance': formData.get('chargeAirDesiredPerf'),
-            'Performance Value': (formData.get('chargeAirPerfValue') || '') + ' ' + (formData.get('chargeAirPerfUnit') || '')
+            'Target performance': (formData.get('chargeAirPerfValue') || '') + ' ' + (formData.get('chargeAirPerfUnit') || '')
           }, Paragraph, TextRun, HeadingLevel);
         }
         
